@@ -28,6 +28,8 @@ public final class CorePatchSmoke {
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.ChunkProviderGenerate");
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.feature.WorldGenDungeons");
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.structure.StructureBoundingBox");
+        check(new BopPlantSupportTransformer(), "biomesoplenty.common.blocks.BlockBOPMushroom");
+        check(new BopPlantSupportTransformer(), "biomesoplenty.common.blocks.BlockMoss");
         assertDirectChunkStorage();
         ru.givler.caveabyss.data.StorageSmoke.check();
         ru.givler.caveabyss.world.DeepWorldGeneratorSmoke.check();

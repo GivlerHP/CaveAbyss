@@ -12,6 +12,8 @@ import ru.givler.caveabyss.network.MinusOneNetwork;
 import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.command.ProbeCommand;
 import ru.givler.caveabyss.proxy.CommonProxy;
+import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
+import ru.givler.caveabyss.integration.bop.BopIntegration;
 
 @Mod(modid= CaveAbyss.ID, name= CaveAbyss.NAME, version= CaveAbyss.VERSION)
 public class CaveAbyss {
@@ -29,6 +31,8 @@ public class CaveAbyss {
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
 		CaveBlocks.register();
+		ThaumcraftIntegration.preInit();
+		BopIntegration.preInit();
 		MinusOneNetwork.init();
 		proxy.preInit(event);
 	}
@@ -40,6 +44,8 @@ public class CaveAbyss {
 	
 	@EventHandler
 	public void postInit(FMLPostInitializationEvent event) {
+		ThaumcraftIntegration.postInit();
+		BopIntegration.postInit();
 		proxy.postInit(event);
 	}
 

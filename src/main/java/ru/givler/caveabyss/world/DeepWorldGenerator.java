@@ -9,6 +9,8 @@ import net.minecraft.world.gen.MapGenCaves;
 import net.minecraft.world.gen.MapGenRavine;
 import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.data.MinusOneLayer;
+import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
+import ru.givler.caveabyss.integration.bop.BopIntegration;
 
 /** Terrain extension called by ChunkProviderGenerate before returning a new chunk. */
 public final class DeepWorldGenerator {
@@ -64,6 +66,8 @@ public final class DeepWorldGenerator {
                 || biome == net.minecraft.world.biome.BiomeGenBase.extremeHillsEdge)
                 && random.nextInt(12) == 0)
             vein(random, terrain, stone, deepslate, Blocks.emerald_ore, CaveBlocks.emeraldOre, 1, 1, -16, -1);
+        ThaumcraftIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
+        BopIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
         return terrain;
     }
 
