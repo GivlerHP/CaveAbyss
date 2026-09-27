@@ -91,6 +91,21 @@ public final class CorePatchSmoke {
             new ClassReader(patched).accept(node, 0);
             assertNegativeBoundary(node, "(III)Lnet/minecraft/tileentity/TileEntity;");
         }
+        if (name.equals("net.minecraft.client.renderer.RenderGlobal")) {
+            ClassNode node = new ClassNode();
+            new ClassReader(patched).accept(node, 0);
+            boolean skyHook = false;
+            for (MethodNode method : node.methods) {
+                if (!method.desc.equals("(F)V")) continue;
+                for (AbstractInsnNode instruction = method.instructions.getFirst(); instruction != null; instruction = instruction.getNext()) {
+                    if (!(instruction instanceof MethodInsnNode)) continue;
+                    MethodInsnNode call = (MethodInsnNode) instruction;
+                    if (call.owner.equals("ru/givler/caveabyss/client/SkyRenderHooks")
+                            && call.name.equals("adjustHorizon")) skyHook = true;
+                }
+            }
+            if (!skyHook) throw new AssertionError("RenderGlobal sky horizon hook missing");
+        }
         System.out.println("Patched " + name);
     }
 

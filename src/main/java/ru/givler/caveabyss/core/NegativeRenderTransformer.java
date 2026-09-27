@@ -23,6 +23,7 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
     private static final String GLOBAL = "net.minecraft.client.renderer.RenderGlobal";
     private static final String CACHE = "net.minecraft.world.ChunkCache";
     private static final String HOOK = "ru/givler/caveabyss/core/MinusOneHooks";
+    private static final String SKY_HOOK = "ru/givler/caveabyss/client/SkyRenderHooks";
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
@@ -38,6 +39,14 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
 
     private static void patchGlobal(ClassNode node) {
         int patched = 0;
+        FieldNode worldField = null;
+        for (FieldNode field : node.fields) {
+            if (FMLDeobfuscatingRemapper.INSTANCE.mapDesc(field.desc).equals("Lnet/minecraft/client/multiplayer/WorldClient;")) {
+                worldField = field;
+                break;
+            }
+        }
+        if (worldField == null) throw new IllegalStateException("CaveAbyss RenderGlobal world field missing");
         for (MethodNode method : node.methods) {
             String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(node.name, method.name, method.desc);
             if (method.name.equals("<init>")) {
@@ -88,6 +97,21 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                     patched++;
                     break;
                 }
+            } else if (method.desc.equals("(F)V") && (mapped.equals("renderSky") || mapped.equals("func_72714_a"))) {
+                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (!(insn instanceof MethodInsnNode)) continue;
+                    MethodInsnNode call = (MethodInsnNode) insn;
+                    String callName = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
+                    if (!call.desc.equals("()D") || !callName.equals("getHorizon") && !callName.equals("func_72919_O")) continue;
+                    InsnList code = new InsnList();
+                    code.add(new VarInsnNode(ALOAD, 0));
+                    code.add(new FieldInsnNode(GETFIELD, node.name, worldField.name, worldField.desc));
+                    code.add(new MethodInsnNode(INVOKESTATIC, SKY_HOOK, "adjustHorizon",
+                            "(DLnet/minecraft/client/multiplayer/WorldClient;)D", false));
+                    method.instructions.insert(insn, code);
+                    patched++;
+                    break;
+                }
             } else if (method.desc.equals("(III)V") && (mapped.equals("markRenderersForNewPosition") || mapped.equals("func_72722_c"))) {
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof VarInsnNode) || insn.getOpcode() != ISTORE || ((VarInsnNode) insn).var != 13) continue;
@@ -116,7 +140,7 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                 }
             }
         }
-        if (patched != 7) throw new IllegalStateException("CaveAbyss expected 7 RenderGlobal patches; found " + patched);
+        if (patched != 8) throw new IllegalStateException("CaveAbyss expected 8 RenderGlobal patches; found " + patched);
     }
 
     private static void patchCache(ClassNode node) {
