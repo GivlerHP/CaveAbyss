@@ -13,6 +13,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.network.Packet;
+import net.minecraft.block.Block;
+import net.minecraft.init.Blocks;
 import net.minecraftforge.event.world.ChunkWatchEvent;
 
 public final class MinusOneNetwork {
@@ -39,6 +44,13 @@ public final class MinusOneNetwork {
                 CHANNEL.sendTo(new LightSnapshot(event.player.dimension, event.chunk.chunkXPos, event.chunk.chunkZPos,
                         section, sky, block), event.player);
         }
+        for (Object value : chunk.chunkTileEntityMap.values()) {
+            TileEntity tile = (TileEntity) value;
+            if (!tile.isInvalid() && tile.yCoord >= -64 && tile.yCoord < 0) {
+                Packet packet = tile.getDescriptionPacket();
+                if (packet != null) event.player.playerNetServerHandler.sendPacket(packet);
+            }
+        }
     }
 
     private static boolean hasLight(byte[] sky, byte[] block) {
@@ -50,6 +62,20 @@ public final class MinusOneNetwork {
     public static void broadcast(World world, int x, int y, int z, int state) {
         CHANNEL.sendToAllAround(new Delta(world.provider.dimensionId, x, y, z, state),
                 new NetworkRegistry.TargetPoint(world.provider.dimensionId, x + 0.5, y + 0.5, z + 0.5, 128));
+    }
+
+    /** Tile entities keep their vanilla description packets and chunk NBT. */
+    public static void broadcastTileEntity(World world, TileEntity tile) {
+        if (tile.isInvalid()) return;
+        Packet packet = tile.getDescriptionPacket();
+        if (packet == null) return;
+        for (Object value : world.playerEntities) {
+            if (!(value instanceof EntityPlayerMP)) continue;
+            EntityPlayerMP player = (EntityPlayerMP) value;
+            double dx = player.posX - tile.xCoord, dy = player.posY - tile.yCoord, dz = player.posZ - tile.zCoord;
+            if (dx * dx + dy * dy + dz * dz <= 128 * 128)
+                player.playerNetServerHandler.sendPacket(packet);
+        }
     }
 
     public static final class Snapshot implements IMessage {
@@ -108,7 +134,16 @@ public final class MinusOneNetwork {
                         World world = Minecraft.getMinecraft().theWorld;
                         if (world != null && world.provider.dimensionId == message.dimension)
                         {
-                            MinusOneLayer.applyBlock(world, message.x, message.y, message.z, message.state);
+                            Chunk chunk = world.getChunkFromBlockCoords(message.x, message.z);
+                            int x = message.x & 15, z = message.z & 15;
+                            Block block = Block.getBlockById(message.state & 65535);
+                            if (block == null) block = Blocks.air;
+                            int metadata = message.state >>> 16 & 15;
+                            if (chunk.getBlock(x, message.y, z) == block)
+                                chunk.setBlockMetadata(x, message.y, z, metadata);
+                            else
+                                chunk.func_150807_a(x, message.y, z, block, metadata);
+                            world.markBlockForUpdate(message.x, message.y, message.z);
                             world.func_147451_t(message.x, message.y, message.z);
                         }
                     }

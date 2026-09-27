@@ -12,6 +12,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.world.ChunkDataEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
+import ru.givler.caveabyss.block.CaveBlocks;
 
 /** Four negative sections in the byte/nibble layout used by vanilla chunks. */
 public final class MinusOneLayer {
@@ -26,6 +27,10 @@ public final class MinusOneLayer {
 
     private static Layer layer(World world, int x, int z) {
         Chunk chunk = world.getChunkFromBlockCoords(x, z);
+        return layer(chunk);
+    }
+
+    private static Layer layer(Chunk chunk) {
         Layer result = LAYERS.get(chunk);
         if (result == null) {
             result = new Layer();
@@ -86,17 +91,35 @@ public final class MinusOneLayer {
         return block == null ? Blocks.air : block;
     }
 
+    /** Chunk hooks must not request their own chunk again while it is loading. */
+    public static Block getBlock(Chunk chunk, int x, int y, int z) {
+        Layer data = LAYERS.get(chunk);
+        if (data == null || y < MIN_Y || y >= 0) return Blocks.air;
+        Block block = Block.getBlockById(state(data, index(x, y, z)) & 65535);
+        return block == null ? Blocks.air : block;
+    }
+
     public static int getMetadata(World world, int x, int y, int z) {
         return valid(x, y, z) ? state(layer(world, x, z), index(x, y, z)) >>> 16 & 15 : 0;
     }
 
+    public static int getMetadata(Chunk chunk, int x, int y, int z) {
+        Layer data = LAYERS.get(chunk);
+        return data == null || y < MIN_Y || y >= 0 ? 0 : state(data, index(x, y, z)) >>> 16 & 15;
+    }
+
     public static boolean setBlock(World world, int x, int y, int z, Block block, int metadata, int flags) {
+        if (!valid(x, y, z) || block == null || metadata < 0 || metadata > 15) return false;
+        return setBlock(world.getChunkFromBlockCoords(x, z), x, y, z, block, metadata, flags);
+    }
+
+    public static boolean setBlock(Chunk chunk, int x, int y, int z, Block block, int metadata, int flags) {
+        World world = chunk.worldObj;
         if (!valid(x, y, z) || block == null || metadata < 0 || metadata > 15) return false;
         int id = Block.getIdFromBlock(block);
         if (id < 0 || id > 4095) return false;
         int next = id == 0 ? 0 : id | (metadata << 16);
-        Chunk chunk = world.getChunkFromBlockCoords(x, z);
-        Layer layer = layer(world, x, z);
+        Layer layer = layer(chunk);
         int index = index(x, y, z);
         if (state(layer, index) == next) return false;
         setState(layer, index, next);
@@ -140,6 +163,18 @@ public final class MinusOneLayer {
         System.arraycopy(ids, 0, layer.ids, section * 4096, 4096);
         layer.add = applyNibbleSection(layer.add, add, section);
         layer.data = applyNibbleSection(layer.data, data, section);
+        int baseX = chunkX << 4, baseZ = chunkZ << 4;
+        int stoneId = Block.getIdFromBlock(Blocks.stone);
+        int deepslateId = Block.getIdFromBlock(CaveBlocks.deepslate);
+        for (int dy = 0; dy < 16; dy++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+            int y = MIN_Y + section * 16 + dy;
+            int state = state(layer, index(x, y, z));
+            int id = state & 65535;
+            if (id == 0 || id == stoneId || id == deepslateId) continue;
+            Block block = Block.getBlockById(id);
+            if (block != null && block.hasTileEntity(state >>> 16 & 15))
+                world.getTileEntity(baseX + x, y, baseZ + z);
+        }
         world.markBlockRangeForRenderUpdate(chunkX << 4, MIN_Y + section * 16, chunkZ << 4,
                 (chunkX << 4) + 15, MIN_Y + section * 16 + 15, (chunkZ << 4) + 15);
     }
@@ -169,9 +204,20 @@ public final class MinusOneLayer {
         return nibble(type == EnumSkyBlock.Sky ? layer.skyLight : layer.blockLight, index(x, y, z));
     }
 
+    public static int getLight(Chunk chunk, EnumSkyBlock type, int x, int y, int z) {
+        Layer data = LAYERS.get(chunk);
+        if (data == null || y < MIN_Y || y >= 0) return 0;
+        return nibble(type == EnumSkyBlock.Sky ? data.skyLight : data.blockLight, index(x, y, z));
+    }
+
     public static void setLight(World world, EnumSkyBlock type, int x, int y, int z, int value) {
         if (!valid(x, y, z) || !world.getChunkProvider().chunkExists(x >> 4, z >> 4)) return;
-        Layer layer = layer(world, x, z);
+        setLight(world.getChunkFromBlockCoords(x, z), type, x, y, z, value);
+    }
+
+    public static void setLight(Chunk chunk, EnumSkyBlock type, int x, int y, int z, int value) {
+        if (!valid(x, y, z)) return;
+        Layer layer = layer(chunk);
         byte[] light = type == EnumSkyBlock.Sky ? layer.skyLight : layer.blockLight;
         value &= 15;
         if (light == null && value == 0) return;
@@ -183,7 +229,7 @@ public final class MinusOneLayer {
         int index = index(x, y, z);
         if (nibble(light, index) == value) return;
         setNibble(light, index, value);
-        if (!world.isRemote) world.getChunkFromBlockCoords(x, z).setChunkModified();
+        if (!chunk.worldObj.isRemote) chunk.setChunkModified();
     }
 
     public static byte[] copyLightSection(Chunk chunk, EnumSkyBlock type, int section) {

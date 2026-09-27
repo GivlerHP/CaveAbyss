@@ -6,6 +6,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
@@ -51,9 +52,13 @@ public final class ChunkNegativeTransformer implements IClassTransformer, Opcode
             } else if (desc.equals("(IIII)I") && (mapped.equals("getBlockLightValue") || mapped.equals("func_76629_c"))) {
                 injectLight(method, "chunkGetBlockLight", "(Lnet/minecraft/world/chunk/Chunk;IIII)I", IRETURN, 2, 4);
                 patched++;
+            } else if (desc.equals("(IIILnet/minecraft/tileentity/TileEntity;)V")
+                    && (mapped.equals("setBlockTileEntityInChunk") || mapped.equals("func_150812_a"))) {
+                allowNegativeTileEntity(method);
+                patched++;
             }
         }
-        if (patched != 7) throw new IllegalStateException("CaveAbyss expected 7 Chunk methods; found " + patched);
+        if (patched != 8) throw new IllegalStateException("CaveAbyss expected 8 Chunk methods; found " + patched);
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         node.accept(writer);
         return writer.toByteArray();
@@ -108,5 +113,28 @@ public final class ChunkNegativeTransformer implements IClassTransformer, Opcode
         code.add(new InsnNode(returnOpcode));
         code.add(vanilla);
         method.instructions.insert(code);
+    }
+
+    private static void allowNegativeTileEntity(MethodNode method) {
+        for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+            if (!(insn instanceof MethodInsnNode)) continue;
+            MethodInsnNode call = (MethodInsnNode) insn;
+            if (!call.owner.equals("net/minecraft/block/Block") || !call.desc.equals("(I)Z")
+                    || !FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc).equals("hasTileEntity"))
+                continue;
+            InsnList code = new InsnList();
+            LabelNode vanilla = new LabelNode();
+            code.add(new VarInsnNode(ILOAD, 2));
+            code.add(new JumpInsnNode(IFGE, vanilla));
+            code.add(new VarInsnNode(ILOAD, 2));
+            code.add(new IntInsnNode(BIPUSH, -64));
+            code.add(new JumpInsnNode(IF_ICMPLT, vanilla));
+            code.add(new InsnNode(POP));
+            code.add(new InsnNode(ICONST_1));
+            code.add(vanilla);
+            method.instructions.insert(insn, code);
+            return;
+        }
+        throw new IllegalStateException("CaveAbyss could not extend Chunk tile entity loading");
     }
 }

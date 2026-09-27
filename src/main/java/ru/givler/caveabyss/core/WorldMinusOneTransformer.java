@@ -14,14 +14,19 @@ import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
+import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 
 public final class WorldMinusOneTransformer implements IClassTransformer, Opcodes {
     private static final String WORLD = "net.minecraft.world.World";
+    private static final String WORLD_MANAGER = "net.minecraft.world.WorldManager";
     private static final String HOOK = "ru/givler/caveabyss/core/MinusOneHooks";
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
-        if (bytes == null || !WORLD.equals(transformedName)) return bytes;
+        if (bytes == null) return null;
+        if (WORLD_MANAGER.equals(transformedName)) return transformWorldManager(bytes);
+        if (!WORLD.equals(transformedName)) return bytes;
         ClassNode node = new ClassNode();
         new ClassReader(bytes).accept(node, 0);
         int patched = 0;
@@ -45,6 +50,10 @@ public final class WorldMinusOneTransformer implements IClassTransformer, Opcode
             } else if (desc.equals("(IIIII)Z") && (mappedName.equals("setBlockMetadataWithNotify") || mappedName.equals("func_72921_c"))) {
                 extendSetBlockBounds(method);
                 patched++;
+            } else if (desc.equals("(III)Lnet/minecraft/tileentity/TileEntity;")
+                    && (mappedName.equals("getTileEntity") || mappedName.equals("func_147438_o"))) {
+                extendTileEntityBounds(method);
+                patched++;
             } else if (desc.equals("(IIIIII)Z") && (mappedName.equals("checkChunksExist") || mappedName.equals("func_72904_c"))) {
                 injectCheckChunks(method);
                 patched++;
@@ -62,7 +71,47 @@ public final class WorldMinusOneTransformer implements IClassTransformer, Opcode
                 patched++;
             }
         }
-        if (patched != 10) throw new IllegalStateException("CaveAbyss expected 10 World methods; found " + patched);
+        if (patched != 11) throw new IllegalStateException("CaveAbyss expected 11 World methods; found " + patched);
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        node.accept(writer);
+        return writer.toByteArray();
+    }
+
+    private static byte[] transformWorldManager(byte[] bytes) {
+        ClassNode node = new ClassNode();
+        new ClassReader(bytes).accept(node, 0);
+        FieldNode worldField = null;
+        for (FieldNode field : node.fields)
+            if (FMLDeobfuscatingRemapper.INSTANCE.mapDesc(field.desc).equals("Lnet/minecraft/world/WorldServer;")) {
+                worldField = field;
+                break;
+            }
+        if (worldField == null) throw new IllegalStateException("CaveAbyss WorldManager world field missing");
+        int patched = 0;
+        for (MethodNode method : node.methods) {
+            String desc = FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc);
+            String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(node.name, method.name, method.desc);
+            if (!desc.equals("(III)V") || !mapped.equals("markBlockForUpdate") && !mapped.equals("func_147586_a")) continue;
+            InsnList code = new InsnList();
+            LabelNode vanilla = new LabelNode();
+            code.add(new VarInsnNode(ILOAD, 2));
+            code.add(new JumpInsnNode(IFGE, vanilla));
+            code.add(new VarInsnNode(ILOAD, 2));
+            code.add(new IntInsnNode(BIPUSH, -64));
+            code.add(new JumpInsnNode(IF_ICMPLT, vanilla));
+            code.add(new VarInsnNode(ALOAD, 0));
+            code.add(new FieldInsnNode(GETFIELD, node.name, worldField.name, worldField.desc));
+            code.add(new VarInsnNode(ILOAD, 1));
+            code.add(new VarInsnNode(ILOAD, 2));
+            code.add(new VarInsnNode(ILOAD, 3));
+            code.add(new MethodInsnNode(INVOKESTATIC, HOOK, "serverMarkBlockForUpdate",
+                    "(Lnet/minecraft/world/WorldServer;III)V", false));
+            code.add(new InsnNode(RETURN));
+            code.add(vanilla);
+            method.instructions.insert(code);
+            patched++;
+        }
+        if (patched != 1) throw new IllegalStateException("CaveAbyss expected WorldManager block update hook; found " + patched);
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         node.accept(writer);
         return writer.toByteArray();
@@ -113,6 +162,19 @@ public final class WorldMinusOneTransformer implements IClassTransformer, Opcode
             return;
         }
         throw new IllegalStateException("CaveAbyss could not extend World.setBlock bounds");
+    }
+
+    private static void extendTileEntityBounds(MethodNode method) {
+        for (org.objectweb.asm.tree.AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+            if (!(insn instanceof VarInsnNode) || insn.getOpcode() != ILOAD || ((VarInsnNode) insn).var != 2) continue;
+            org.objectweb.asm.tree.AbstractInsnNode next = insn.getNext();
+            if (!(next instanceof JumpInsnNode) || next.getOpcode() != IFLT) continue;
+            JumpInsnNode oldJump = (JumpInsnNode) next;
+            method.instructions.insert(insn, new IntInsnNode(BIPUSH, -64));
+            method.instructions.set(oldJump, new JumpInsnNode(IF_ICMPLT, oldJump.label));
+            return;
+        }
+        throw new IllegalStateException("CaveAbyss could not extend World.getTileEntity bounds");
     }
 
     private static void injectLight(MethodNode method, String hook, String desc, int returnOpcode, int yIndex, int lastArg) {

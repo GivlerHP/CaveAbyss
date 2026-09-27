@@ -15,7 +15,7 @@ apply plugin: 'idea'
 project.sourceCompatibility = '1.8'
 project.targetCompatibility = '1.8'
 
-version = "1.0.2.6"
+version = "1.0.2.10"
 group = "ru.givler.caveabyss"
 archivesBaseName = "CaveAbyss"
 
