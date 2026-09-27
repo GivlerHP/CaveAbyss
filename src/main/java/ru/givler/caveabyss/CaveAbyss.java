@@ -9,6 +9,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
+import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.command.ProbeCommand;
 import ru.givler.caveabyss.proxy.CommonProxy;
 
@@ -27,6 +28,7 @@ public class CaveAbyss {
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
+		CaveBlocks.register();
 		MinusOneNetwork.init();
 		proxy.preInit(event);
 	}

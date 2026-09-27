@@ -34,6 +34,7 @@ local.properties
 .loadpath
 /eclipse
 /run
+/libs
 
 
 # Eclipse Core

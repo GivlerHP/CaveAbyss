@@ -9,7 +9,6 @@ import cpw.mods.fml.common.network.simpleimpl.MessageContext;
 import cpw.mods.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import cpw.mods.fml.relauncher.Side;
 import io.netty.buffer.ByteBuf;
-import java.util.Arrays;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.World;
 import net.minecraft.world.EnumSkyBlock;
@@ -17,8 +16,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.world.ChunkWatchEvent;
 
 public final class MinusOneNetwork {
-    private static final int BATCH_ENTRIES = 1000;
-    private static final SimpleNetworkWrapper CHANNEL = NetworkRegistry.INSTANCE.newSimpleChannel("caveabyss_y1");
+    private static final SimpleNetworkWrapper CHANNEL = NetworkRegistry.INSTANCE.newSimpleChannel("caveabyss_v2");
 
     public static void init() {
         CHANNEL.registerMessage(Snapshot.Handler.class, Snapshot.class, 0, Side.CLIENT);
@@ -29,23 +27,22 @@ public final class MinusOneNetwork {
     @SubscribeEvent
     public void onWatch(ChunkWatchEvent.Watch event) {
         Chunk chunk = event.player.worldObj.getChunkFromChunkCoords(event.chunk.chunkXPos, event.chunk.chunkZPos);
-        int[] entries = MinusOneLayer.copyChunk(chunk);
-        for (int start = 0; start == 0 || start < entries.length; start += BATCH_ENTRIES * 2) {
-            int end = Math.min(start + BATCH_ENTRIES * 2, entries.length);
+        for (int section = 0; section < 4; section++) {
             CHANNEL.sendTo(new Snapshot(event.player.dimension, event.chunk.chunkXPos, event.chunk.chunkZPos,
-                    start == 0, Arrays.copyOfRange(entries, start, end)), event.player);
+                    section, section == 0, MinusOneLayer.copySection(chunk, section, 0),
+                    MinusOneLayer.copySection(chunk, section, 1), MinusOneLayer.copySection(chunk, section, 2)), event.player);
         }
-        byte[] sky = MinusOneLayer.copyLight(chunk, EnumSkyBlock.Sky);
-        byte[] block = MinusOneLayer.copyLight(chunk, EnumSkyBlock.Block);
-        for (int section = 0; section < 4; section++)
-            if (hasLight(sky, block, section))
+        for (int section = 0; section < 4; section++) {
+            byte[] sky = MinusOneLayer.copyLightSection(chunk, EnumSkyBlock.Sky, section);
+            byte[] block = MinusOneLayer.copyLightSection(chunk, EnumSkyBlock.Block, section);
+            if (hasLight(sky, block))
                 CHANNEL.sendTo(new LightSnapshot(event.player.dimension, event.chunk.chunkXPos, event.chunk.chunkZPos,
-                        section, Arrays.copyOfRange(sky, section * 4096, (section + 1) * 4096),
-                        Arrays.copyOfRange(block, section * 4096, (section + 1) * 4096)), event.player);
+                        section, sky, block), event.player);
+        }
     }
 
-    private static boolean hasLight(byte[] sky, byte[] block, int section) {
-        for (int i = section * 4096; i < (section + 1) * 4096; i++)
+    private static boolean hasLight(byte[] sky, byte[] block) {
+        for (int i = 0; i < 2048; i++)
             if (sky[i] != 0 || block[i] != 0) return true;
         return false;
     }
@@ -56,26 +53,26 @@ public final class MinusOneNetwork {
     }
 
     public static final class Snapshot implements IMessage {
-        private int dimension, chunkX, chunkZ;
+        private int dimension, chunkX, chunkZ, section;
         private boolean replace;
-        private int[] entries = new int[0];
+        private byte[] ids = new byte[4096], add = new byte[2048], data = new byte[2048];
         public Snapshot() { }
-        Snapshot(int dimension, int chunkX, int chunkZ, boolean replace, int[] entries) {
+        Snapshot(int dimension, int chunkX, int chunkZ, int section, boolean replace,
+                 byte[] ids, byte[] add, byte[] data) {
             this.dimension = dimension; this.chunkX = chunkX; this.chunkZ = chunkZ;
-            this.replace = replace; this.entries = entries;
+            this.section = section; this.replace = replace;
+            this.ids = ids; this.add = add; this.data = data;
         }
         @Override public void fromBytes(ByteBuf buffer) {
             dimension = buffer.readInt(); chunkX = buffer.readInt(); chunkZ = buffer.readInt();
-            replace = buffer.readBoolean();
-            int count = buffer.readUnsignedShort();
-            if (count > BATCH_ENTRIES || buffer.readableBytes() < count * 8) throw new IllegalArgumentException("Bad negative chunk snapshot");
-            entries = new int[count * 2];
-            for (int i = 0; i < entries.length; i++) entries[i] = buffer.readInt();
+            section = buffer.readUnsignedByte(); replace = buffer.readBoolean();
+            if (section > 3 || buffer.readableBytes() < 8192) throw new IllegalArgumentException("Bad negative chunk snapshot");
+            buffer.readBytes(ids); buffer.readBytes(add); buffer.readBytes(data);
         }
         @Override public void toBytes(ByteBuf buffer) {
             buffer.writeInt(dimension); buffer.writeInt(chunkX); buffer.writeInt(chunkZ);
-            buffer.writeBoolean(replace); buffer.writeShort(entries.length / 2);
-            for (int entry : entries) buffer.writeInt(entry);
+            buffer.writeByte(section); buffer.writeBoolean(replace);
+            buffer.writeBytes(ids); buffer.writeBytes(add); buffer.writeBytes(data);
         }
         public static final class Handler implements IMessageHandler<Snapshot, IMessage> {
             @Override public IMessage onMessage(final Snapshot message, MessageContext context) {
@@ -83,7 +80,8 @@ public final class MinusOneNetwork {
                     @Override public void run() {
                         World world = Minecraft.getMinecraft().theWorld;
                         if (world != null && world.provider.dimensionId == message.dimension)
-                            MinusOneLayer.applyChunk(world, message.chunkX, message.chunkZ, message.entries, message.replace);
+                            MinusOneLayer.applySection(world, message.chunkX, message.chunkZ, message.section,
+                                    message.replace, message.ids, message.add, message.data);
                     }
                 });
                 return null;
@@ -122,7 +120,7 @@ public final class MinusOneNetwork {
 
     public static final class LightSnapshot implements IMessage {
         private int dimension, chunkX, chunkZ, section;
-        private byte[] sky = new byte[4096], block = new byte[4096];
+        private byte[] sky = new byte[2048], block = new byte[2048];
         public LightSnapshot() { }
         LightSnapshot(int dimension, int chunkX, int chunkZ, int section, byte[] sky, byte[] block) {
             this.dimension = dimension; this.chunkX = chunkX; this.chunkZ = chunkZ; this.section = section;
@@ -130,7 +128,7 @@ public final class MinusOneNetwork {
         }
         @Override public void fromBytes(ByteBuf buffer) {
             dimension = buffer.readInt(); chunkX = buffer.readInt(); chunkZ = buffer.readInt(); section = buffer.readUnsignedByte();
-            if (section > 3 || buffer.readableBytes() < 8192) throw new IllegalArgumentException("Bad negative light snapshot");
+            if (section > 3 || buffer.readableBytes() < 4096) throw new IllegalArgumentException("Bad negative light snapshot");
             buffer.readBytes(sky); buffer.readBytes(block);
         }
         @Override public void toBytes(ByteBuf buffer) {

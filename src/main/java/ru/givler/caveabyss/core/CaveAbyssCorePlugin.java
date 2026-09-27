@@ -12,7 +12,9 @@ public final class CaveAbyssCorePlugin implements IFMLLoadingPlugin {
         return new String[] {
                 "ru.givler.caveabyss.core.WorldMinusOneTransformer",
                 "ru.givler.caveabyss.core.ChunkNegativeTransformer",
-                "ru.givler.caveabyss.core.VoidVisualTransformer"
+                "ru.givler.caveabyss.core.VoidVisualTransformer",
+                "ru.givler.caveabyss.core.NegativeRenderTransformer",
+                "ru.givler.caveabyss.core.DeepChunkGeneratorTransformer"
         };
     }
 

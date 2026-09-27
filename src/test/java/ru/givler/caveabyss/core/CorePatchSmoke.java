@@ -2,12 +2,15 @@ package ru.givler.caveabyss.core;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.util.CheckClassAdapter;
 
 /** Tests core patches against the actual Forge development classes. */
 public final class CorePatchSmoke {
@@ -16,6 +19,11 @@ public final class CorePatchSmoke {
         check(new ChunkNegativeTransformer(), "net.minecraft.world.chunk.Chunk");
         check(new VoidVisualTransformer(), "net.minecraft.client.renderer.EntityRenderer");
         check(new VoidVisualTransformer(), "net.minecraft.client.multiplayer.WorldClient");
+        check(new NegativeRenderTransformer(), "net.minecraft.client.renderer.RenderGlobal");
+        check(new NegativeRenderTransformer(), "net.minecraft.world.ChunkCache");
+        check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.ChunkProviderGenerate");
+        ru.givler.caveabyss.data.StorageSmoke.check();
+        ru.givler.caveabyss.world.DeepWorldGeneratorSmoke.check();
     }
 
     private static void check(IClassTransformer transformer, String name) throws Exception {
@@ -31,6 +39,11 @@ public final class CorePatchSmoke {
         if (patched == null || patched.length == 0 || patched.length == original.length)
             throw new AssertionError("Class was not patched: " + name);
         new ClassReader(patched);
+        StringWriter verification = new StringWriter();
+        CheckClassAdapter.verify(new ClassReader(patched), CorePatchSmoke.class.getClassLoader(), false,
+                new PrintWriter(verification));
+        if (verification.getBuffer().length() != 0)
+            throw new AssertionError("Invalid transformed bytecode in " + name + ": " + verification);
         if (name.equals("net.minecraft.world.chunk.Chunk")) {
             ClassNode node = new ClassNode();
             new ClassReader(patched).accept(node, 0);

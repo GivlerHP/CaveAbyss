@@ -1,0 +1,15 @@
+tile.deepslate.name=Глубинный сланец
+tile.cobbled_deepslate.name=Колотый глубинный сланец
+tile.polished_deepslate.name=Полированный глубинный сланец
+tile.deepslate_bricks.name=Кирпичи из глубинного сланца
+tile.cracked_deepslate_bricks.name=Потрескавшиеся кирпичи из глубинного сланца
+tile.deepslate_tiles.name=Плитки из глубинного сланца
+tile.cracked_deepslate_tiles.name=Потрескавшиеся плитки из глубинного сланца
+tile.chiseled_deepslate.name=Резной глубинный сланец
+tile.deepslate_coal_ore.name=Глубинная угольная руда
+tile.deepslate_iron_ore.name=Глубинная железная руда
+tile.deepslate_gold_ore.name=Глубинная золотая руда
+tile.deepslate_redstone_ore.name=Глубинная редстоуновая руда
+tile.deepslate_lapis_ore.name=Глубинная лазуритовая руда
+tile.deepslate_diamond_ore.name=Глубинная алмазная руда
+tile.deepslate_emerald_ore.name=Глубинная изумрудная руда
