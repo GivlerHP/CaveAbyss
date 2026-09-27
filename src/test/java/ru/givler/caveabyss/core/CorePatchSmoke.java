@@ -26,6 +26,8 @@ public final class CorePatchSmoke {
         check(new NegativeRenderTransformer(), "net.minecraft.client.renderer.RenderGlobal");
         check(new NegativeRenderTransformer(), "net.minecraft.world.ChunkCache");
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.ChunkProviderGenerate");
+        check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.feature.WorldGenDungeons");
+        check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.structure.StructureBoundingBox");
         assertDirectChunkStorage();
         ru.givler.caveabyss.data.StorageSmoke.check();
         ru.givler.caveabyss.world.DeepWorldGeneratorSmoke.check();

@@ -6,11 +6,16 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.MapGenCaves;
+import net.minecraft.world.gen.MapGenRavine;
 import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.data.MinusOneLayer;
 
 /** Terrain extension called by ChunkProviderGenerate before returning a new chunk. */
 public final class DeepWorldGenerator {
+    // MapGenBase seeds from chunk coordinates. A fixed offset gives the lower
+    // layer its own continuous cave network instead of copying the upper one.
+    private static final int DEEP_CAVE_X_OFFSET = 8192;
+    private static final int DEEP_CAVE_Z_OFFSET = -8192;
     private DeepWorldGenerator() { }
 
     public static int[] prepareTerrain(World world, Block[] blocks, int chunkX, int chunkZ) {
@@ -43,18 +48,22 @@ public final class DeepWorldGenerator {
         }
 
         carveVanillaCaves(world, blocks, terrain, chunkX, chunkZ);
-        connectToVanillaCave(blocks, terrain, stone, deepslate);
+        connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
 
-        vein(random, terrain, stone, deepslate, Blocks.coal_ore, CaveBlocks.coalOre, 20, 9, -62, -1);
-        vein(random, terrain, stone, deepslate, Blocks.iron_ore, CaveBlocks.ironOre, 20, 7, -62, -1);
-        vein(random, terrain, stone, deepslate, Blocks.gold_ore, CaveBlocks.goldOre, 4, 6, -62, -26);
-        vein(random, terrain, stone, deepslate, Blocks.redstone_ore, CaveBlocks.redstoneOre, 8, 6, -62, -24);
-        vein(random, terrain, stone, deepslate, Blocks.lapis_ore, CaveBlocks.lapisOre, 3, 5, -62, -16);
-        vein(random, terrain, stone, deepslate, Blocks.diamond_ore, CaveBlocks.diamondOre, 3, 5, -62, -38);
+        // Keep common utility ores worth mining in the lower layer, while
+        // coal and diamonds remain scarce compared with their upper budget.
+        vein(random, terrain, stone, deepslate, Blocks.coal_ore, CaveBlocks.coalOre, 5, 9, -62, -1);
+        vein(random, terrain, stone, deepslate, Blocks.iron_ore, CaveBlocks.ironOre, 20, 8, -62, -1);
+        vein(random, terrain, stone, deepslate, Blocks.gold_ore, CaveBlocks.goldOre, 2, 8, -62, -26);
+        vein(random, terrain, stone, deepslate, Blocks.redstone_ore, CaveBlocks.redstoneOre, 8, 7, -62, -24);
+        vein(random, terrain, stone, deepslate, Blocks.lapis_ore, CaveBlocks.lapisOre, 1, 6, -62, -16);
+        if (random.nextInt(4) == 0)
+            vein(random, terrain, stone, deepslate, Blocks.diamond_ore, CaveBlocks.diamondOre, 1, 5, -62, -38);
         net.minecraft.world.biome.BiomeGenBase biome = world.getBiomeGenForCoords(baseX + 8, baseZ + 8);
-        if (biome == net.minecraft.world.biome.BiomeGenBase.extremeHills
+        if ((biome == net.minecraft.world.biome.BiomeGenBase.extremeHills
                 || biome == net.minecraft.world.biome.BiomeGenBase.extremeHillsEdge)
-            vein(random, terrain, stone, deepslate, Blocks.emerald_ore, CaveBlocks.emeraldOre, 5, 1, -62, -8);
+                && random.nextInt(12) == 0)
+            vein(random, terrain, stone, deepslate, Blocks.emerald_ore, CaveBlocks.emeraldOre, 1, 1, -16, -1);
         return terrain;
     }
 
@@ -93,7 +102,10 @@ public final class DeepWorldGenerator {
             for (int y = 64; y < 256; y++)
                 shifted[vanillaColumn | y] = upper[vanillaColumn | (y - 64)];
         }
-        new MapGenCaves().func_151539_a(null, world, chunkX, chunkZ, shifted);
+        int deepChunkX = chunkX + DEEP_CAVE_X_OFFSET;
+        int deepChunkZ = chunkZ + DEEP_CAVE_Z_OFFSET;
+        new MapGenCaves().func_151539_a(null, world, deepChunkX, deepChunkZ, shifted);
+        new MapGenRavine().func_151539_a(null, world, deepChunkX, deepChunkZ, shifted);
         copyCarvedCaves(shifted, upper, lower);
     }
 
@@ -113,7 +125,8 @@ public final class DeepWorldGenerator {
         return (shiftedY << 8) | ((vanillaColumn & 15) << 4) | (vanillaColumn >> 4);
     }
 
-    private static void connectToVanillaCave(Block[] upper, int[] lower, int stone, int deepslate) {
+    static void connectToVanillaCave(Block[] upper, int[] lower, int stone, int deepslate,
+                                     long seed, int chunkX, int chunkZ) {
         int best = Integer.MAX_VALUE;
         int lowerX = 0, lowerY = 0, lowerZ = 0, upperX = 0, upperY = 0, upperZ = 0;
         for (int x = 2; x < 14; x++) for (int z = 2; z < 14; z++) {
@@ -141,18 +154,25 @@ public final class DeepWorldGenerator {
                 }
         }
         if (best == Integer.MAX_VALUE) return;
+        Random shape = new Random(seed ^ ((long) chunkX * 341873128712L)
+                ^ ((long) chunkZ * 132897987541L) ^ 0x71A9C43EL);
+        double bendX = (shape.nextDouble() - 0.5) * 5.0;
+        double bendZ = (shape.nextDouble() - 0.5) * 5.0;
+        double phase = shape.nextDouble() * Math.PI * 2.0;
         int steps = Math.max(Math.abs(upperY - lowerY),
-                Math.max(Math.abs(upperX - lowerX), Math.abs(upperZ - lowerZ))) * 2;
+                Math.max(Math.abs(upperX - lowerX), Math.abs(upperZ - lowerZ))) * 3;
         for (int step = 0; step <= steps; step++) {
             double t = (double) step / steps;
-            double cx = lowerX + (upperX - lowerX) * t + 0.5;
+            double curve = Math.sin(Math.PI * t);
+            double cx = lowerX + (upperX - lowerX) * t + 0.5 + bendX * curve;
             double cy = lowerY + (upperY - lowerY) * t + 0.5;
-            double cz = lowerZ + (upperZ - lowerZ) * t + 0.5;
-            for (int x = Math.max(1, (int) Math.floor(cx - 1.3)); x <= Math.min(14, (int) Math.ceil(cx + 1.3)); x++)
-                for (int z = Math.max(1, (int) Math.floor(cz - 1.3)); z <= Math.min(14, (int) Math.ceil(cz + 1.3)); z++)
-                    for (int y = Math.max(-54, (int) Math.floor(cy - 1.3)); y <= Math.min(14, (int) Math.ceil(cy + 1.3)); y++) {
+            double cz = lowerZ + (upperZ - lowerZ) * t + 0.5 + bendZ * curve;
+            double radius = 1.45 + 0.35 * Math.sin(t * Math.PI * 3.0 + phase);
+            for (int x = Math.max(1, (int) Math.floor(cx - radius)); x <= Math.min(14, (int) Math.ceil(cx + radius)); x++)
+                for (int z = Math.max(1, (int) Math.floor(cz - radius)); z <= Math.min(14, (int) Math.ceil(cz + radius)); z++)
+                    for (int y = Math.max(-54, (int) Math.floor(cy - radius)); y <= Math.min(14, (int) Math.ceil(cy + radius)); y++) {
                         double dx = x + 0.5 - cx, dy = y + 0.5 - cy, dz = z + 0.5 - cz;
-                        if (dx * dx + dy * dy + dz * dz > 1.3 * 1.3) continue;
+                        if (dx * dx + dy * dy + dz * dz > radius * radius) continue;
                         if (y < 0) {
                             int index = ((y + 64) << 8) | (z << 4) | x;
                             if (lower[index] == stone || lower[index] == deepslate) lower[index] = 0;
