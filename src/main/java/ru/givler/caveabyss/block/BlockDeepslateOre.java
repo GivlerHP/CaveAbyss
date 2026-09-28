@@ -23,7 +23,8 @@ public final class BlockDeepslateOre extends BlockOre {
 
     @Override
     public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
-        return vanillaOre.getDrops(world, x, y, z, metadata, fortune);
+        return DeepOreDrops.replaceSourceBlock(
+                vanillaOre.getDrops(world, x, y, z, metadata, fortune), vanillaOre, this, 0);
     }
 
     @Override

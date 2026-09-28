@@ -11,6 +11,8 @@ import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.data.MinusOneLayer;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
+import ru.givler.caveabyss.integration.mf2.Mf2Integration;
+import ru.givler.caveabyss.config.DeepOreConfig;
 
 /** Terrain extension called by ChunkProviderGenerate before returning a new chunk. */
 public final class DeepWorldGenerator {
@@ -54,20 +56,19 @@ public final class DeepWorldGenerator {
 
         // Keep common utility ores worth mining in the lower layer, while
         // coal and diamonds remain scarce compared with their upper budget.
-        vein(random, terrain, stone, deepslate, Blocks.coal_ore, CaveBlocks.coalOre, 5, 9, -62, -1);
-        vein(random, terrain, stone, deepslate, Blocks.iron_ore, CaveBlocks.ironOre, 20, 8, -62, -1);
-        vein(random, terrain, stone, deepslate, Blocks.gold_ore, CaveBlocks.goldOre, 2, 8, -62, -26);
-        vein(random, terrain, stone, deepslate, Blocks.redstone_ore, CaveBlocks.redstoneOre, 8, 7, -62, -24);
-        vein(random, terrain, stone, deepslate, Blocks.lapis_ore, CaveBlocks.lapisOre, 1, 6, -62, -16);
-        if (random.nextInt(4) == 0)
-            vein(random, terrain, stone, deepslate, Blocks.diamond_ore, CaveBlocks.diamondOre, 1, 5, -62, -38);
+        configuredVein(random, terrain, stone, deepslate, Blocks.coal_ore, CaveBlocks.coalOre, DeepOreConfig.VANILLA[0]);
+        configuredVein(random, terrain, stone, deepslate, Blocks.iron_ore, CaveBlocks.ironOre, DeepOreConfig.VANILLA[1]);
+        configuredVein(random, terrain, stone, deepslate, Blocks.gold_ore, CaveBlocks.goldOre, DeepOreConfig.VANILLA[2]);
+        configuredVein(random, terrain, stone, deepslate, Blocks.redstone_ore, CaveBlocks.redstoneOre, DeepOreConfig.VANILLA[3]);
+        configuredVein(random, terrain, stone, deepslate, Blocks.lapis_ore, CaveBlocks.lapisOre, DeepOreConfig.VANILLA[4]);
+        configuredVein(random, terrain, stone, deepslate, Blocks.diamond_ore, CaveBlocks.diamondOre, DeepOreConfig.VANILLA[5]);
         net.minecraft.world.biome.BiomeGenBase biome = world.getBiomeGenForCoords(baseX + 8, baseZ + 8);
-        if ((biome == net.minecraft.world.biome.BiomeGenBase.extremeHills
+        if (biome == net.minecraft.world.biome.BiomeGenBase.extremeHills
                 || biome == net.minecraft.world.biome.BiomeGenBase.extremeHillsEdge)
-                && random.nextInt(12) == 0)
-            vein(random, terrain, stone, deepslate, Blocks.emerald_ore, CaveBlocks.emeraldOre, 1, 1, -16, -1);
+            configuredVein(random, terrain, stone, deepslate, Blocks.emerald_ore, CaveBlocks.emeraldOre, DeepOreConfig.VANILLA[6]);
         ThaumcraftIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
         BopIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
+        Mf2Integration.generate(world, random, terrain, deepslate);
         return terrain;
     }
 
@@ -92,6 +93,13 @@ public final class DeepWorldGenerator {
                 z += random.nextInt(3) - 1;
             }
         }
+    }
+
+    private static void configuredVein(Random random, int[] terrain, int stone, int deepslate,
+                                       Block normal, Block deep, DeepOreConfig.Rule rule) {
+        if (DeepOreConfig.enabled(rule) && random.nextDouble() < rule.chance)
+            vein(random, terrain, stone, deepslate, normal, deep,
+                    DeepOreConfig.attempts(rule, random), rule.size, rule.minY, rule.maxY);
     }
 
     private static void carveVanillaCaves(World world, Block[] upper, int[] lower, int chunkX, int chunkZ) {

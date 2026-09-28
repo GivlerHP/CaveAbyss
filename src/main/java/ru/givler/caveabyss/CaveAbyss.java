@@ -14,8 +14,11 @@ import ru.givler.caveabyss.command.ProbeCommand;
 import ru.givler.caveabyss.proxy.CommonProxy;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
+import ru.givler.caveabyss.integration.mf2.Mf2Integration;
+import ru.givler.caveabyss.config.DeepOreConfig;
 
-@Mod(modid= CaveAbyss.ID, name= CaveAbyss.NAME, version= CaveAbyss.VERSION)
+@Mod(modid= CaveAbyss.ID, name= CaveAbyss.NAME, version= CaveAbyss.VERSION,
+        dependencies="after:minefantasy2")
 public class CaveAbyss {
 	public static final String ID = "caveabyss";
 	public static final String NAME = "CaveAbyss";
@@ -30,9 +33,14 @@ public class CaveAbyss {
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
+		DeepOreConfig.load(new java.io.File(event.getModConfigurationDirectory(), "caveabyss-ores.cfg"));
 		CaveBlocks.register();
 		ThaumcraftIntegration.preInit();
 		BopIntegration.preInit();
+		Mf2Integration.preInit();
+		if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2"))
+			net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(
+					new ru.givler.caveabyss.integration.mf2.DepletedDeepOreGuard());
 		MinusOneNetwork.init();
 		proxy.preInit(event);
 	}
@@ -46,6 +54,9 @@ public class CaveAbyss {
 	public void postInit(FMLPostInitializationEvent event) {
 		ThaumcraftIntegration.postInit();
 		BopIntegration.postInit();
+		Mf2Integration.postInit();
+		if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2"))
+			ru.givler.caveabyss.integration.mf2.Mf2Compatibility.register();
 		proxy.postInit(event);
 	}
 

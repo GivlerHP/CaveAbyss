@@ -33,6 +33,7 @@ public final class CorePatchSmoke {
         assertDirectChunkStorage();
         ru.givler.caveabyss.data.StorageSmoke.check();
         ru.givler.caveabyss.world.DeepWorldGeneratorSmoke.check();
+        ru.givler.caveabyss.integration.mf2.Mf2IntegrationSmoke.check();
     }
 
     private static void assertDirectChunkStorage() throws Exception {
@@ -109,6 +110,21 @@ public final class CorePatchSmoke {
                 }
             }
             if (!skyHook) throw new AssertionError("RenderGlobal sky horizon hook missing");
+        }
+        if (name.equals("net.minecraft.client.multiplayer.WorldClient")) {
+            ClassNode node = new ClassNode();
+            new ClassReader(patched).accept(node, 0);
+            boolean displayTick = false;
+            for (MethodNode method : node.methods) {
+                if (!method.desc.equals("(III)V")) continue;
+                for (AbstractInsnNode instruction = method.instructions.getFirst(); instruction != null; instruction = instruction.getNext()) {
+                    if (!(instruction instanceof MethodInsnNode)) continue;
+                    MethodInsnNode call = (MethodInsnNode) instruction;
+                    if (call.owner.equals("net/minecraft/block/Block")
+                            && call.name.equals("randomDisplayTick")) displayTick = true;
+                }
+            }
+            if (!displayTick) throw new AssertionError("Negative-Y block display ticks were disabled");
         }
         System.out.println("Patched " + name);
     }

@@ -11,6 +11,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.givler.caveabyss.config.DeepOreConfig;
 
 /** Optional Thaumcraft integration without linking to its classes. */
 public final class ThaumcraftIntegration {
@@ -70,15 +71,21 @@ public final class ThaumcraftIntegration {
         int stone = Block.getIdFromBlock(Blocks.stone);
         int deepId = Block.getIdFromBlock(deepOre);
         int normalId = Block.getIdFromBlock(sourceOre);
-        if (cinnabarEnabled)
-            for (int n = 0; n < 4; n++)
-                placeSingle(random, terrain, stone, deepslate, normalId, deepId, 0, -62, -1);
-        if (infusedEnabled)
-            for (int n = 0; n < 2; n++)
+        DeepOreConfig.Rule cinnabar = DeepOreConfig.THAUMCRAFT[0];
+        if (cinnabarEnabled && DeepOreConfig.enabled(cinnabar) && random.nextDouble() < cinnabar.chance)
+            for (int n = 0, count = DeepOreConfig.attempts(cinnabar, random); n < count; n++)
                 placeVein(random, terrain, stone, deepslate, normalId, deepId,
-                        1 + random.nextInt(6), 6, -62, -1);
-        if (amberEnabled)
-            placeSingle(random, terrain, stone, deepslate, normalId, deepId, 7, -22, -1);
+                        0, cinnabar.size, cinnabar.minY, cinnabar.maxY);
+        DeepOreConfig.Rule infused = DeepOreConfig.THAUMCRAFT[1];
+        if (infusedEnabled && DeepOreConfig.enabled(infused) && random.nextDouble() < infused.chance)
+            for (int n = 0, count = DeepOreConfig.attempts(infused, random); n < count; n++)
+                placeVein(random, terrain, stone, deepslate, normalId, deepId,
+                        1 + random.nextInt(6), infused.size, infused.minY, infused.maxY);
+        DeepOreConfig.Rule amber = DeepOreConfig.THAUMCRAFT[2];
+        if (amberEnabled && DeepOreConfig.enabled(amber) && random.nextDouble() < amber.chance)
+            for (int n = 0, count = DeepOreConfig.attempts(amber, random); n < count; n++)
+                placeVein(random, terrain, stone, deepslate, normalId, deepId,
+                        7, amber.size, amber.minY, amber.maxY);
     }
 
     private static boolean biomeAllowsOres(World world, int chunkX, int chunkZ) {

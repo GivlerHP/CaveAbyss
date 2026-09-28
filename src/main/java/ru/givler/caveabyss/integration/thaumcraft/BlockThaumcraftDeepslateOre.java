@@ -14,6 +14,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import ru.givler.caveabyss.block.CaveBlocks;
+import ru.givler.caveabyss.block.DeepOreDrops;
 
 /** Thaumcraft's eight ore variants with a deepslate appearance. */
 public final class BlockThaumcraftDeepslateOre extends Block {
@@ -99,7 +100,8 @@ public final class BlockThaumcraftDeepslateOre extends Block {
     @Override
     public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
         Block source = ThaumcraftIntegration.sourceOre();
-        return source != null ? source.getDrops(world, x, y, z, metadata, fortune)
+        return source != null ? DeepOreDrops.replaceSourceBlock(
+                source.getDrops(world, x, y, z, metadata, fortune), source, this, metadata)
                 : super.getDrops(world, x, y, z, metadata, fortune);
     }
 

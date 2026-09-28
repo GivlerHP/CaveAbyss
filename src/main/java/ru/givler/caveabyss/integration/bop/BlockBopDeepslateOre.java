@@ -13,6 +13,7 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.World;
+import ru.givler.caveabyss.block.DeepOreDrops;
 
 /** Seven overworld BOP gems, backed by their original gem drops. */
 public final class BlockBopDeepslateOre extends Block {
@@ -62,7 +63,9 @@ public final class BlockBopDeepslateOre extends Block {
     public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
         Block original = BopIntegration.sourceOre();
         return original != null && metadata >= 0 && metadata < GEMS.length
-                ? original.getDrops(world, x, y, z, (metadata + 1) * 2, fortune)
+                ? DeepOreDrops.replaceSourceBlock(
+                        original.getDrops(world, x, y, z, (metadata + 1) * 2, fortune),
+                        original, this, metadata)
                 : super.getDrops(world, x, y, z, metadata, fortune);
     }
 

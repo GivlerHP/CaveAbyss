@@ -51,8 +51,18 @@ public final class VoidVisualTransformer implements IClassTransformer, Opcodes {
                     break;
                 }
             } else if (world && method.desc.equals("(III)V") && (mapped.equals("doVoidFogParticles") || mapped.equals("func_73029_E"))) {
-                method.instructions.insert(new InsnNode(RETURN));
-                patched++;
+                // This method also calls Block.randomDisplayTick. Keep that path so
+                // negative-Y ores can play sounds and display their own particles.
+                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (!(insn instanceof MethodInsnNode)) continue;
+                    MethodInsnNode call = (MethodInsnNode) insn;
+                    if (!call.desc.equals("()Z") || !call.name.equals("getWorldHasVoidParticles")
+                            && !call.name.equals("func_76564_j")) continue;
+                    method.instructions.insertBefore(call, new InsnNode(POP));
+                    method.instructions.set(call, new InsnNode(ICONST_0));
+                    patched++;
+                    break;
+                }
             }
         }
         if (patched != (renderer ? 2 : 1)) throw new IllegalStateException("CaveAbyss void visual patch count=" + patched + " class=" + transformedName);

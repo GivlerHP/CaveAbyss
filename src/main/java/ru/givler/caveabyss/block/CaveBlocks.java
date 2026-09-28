@@ -4,6 +4,7 @@ import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
+import net.minecraftforge.oredict.OreDictionary;
 
 public final class CaveBlocks {
     public static Block deepslate;
@@ -33,6 +34,8 @@ public final class CaveBlocks {
         deepslateTiles = decorative("deepslate_tiles");
         crackedDeepslateTiles = decorative("cracked_deepslate_tiles");
         chiseledDeepslate = decorative("chiseled_deepslate");
+        OreDictionary.registerOre("stone", deepslate);
+        OreDictionary.registerOre("cobblestone", cobbledDeepslate);
         coalOre = ore("deepslate_coal_ore", Blocks.coal_ore, 0);
         ironOre = ore("deepslate_iron_ore", Blocks.iron_ore, 1);
         goldOre = ore("deepslate_gold_ore", Blocks.gold_ore, 2);
@@ -43,7 +46,11 @@ public final class CaveBlocks {
     }
 
     private static Block ore(String name, Block vanilla, int level) {
-        return register(new BlockDeepslateOre(name, vanilla, level), name);
+        Block block = register(new BlockDeepslateOre(name, vanilla, level), name);
+        String material = name.substring("deepslate_".length(), name.length() - "_ore".length());
+        OreDictionary.registerOre("ore" + Character.toUpperCase(material.charAt(0))
+                + material.substring(1), block);
+        return block;
     }
 
     private static Block decorative(String name) {

@@ -18,6 +18,7 @@ import net.minecraft.util.Direction;
 import net.minecraft.util.Facing;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import ru.givler.caveabyss.config.DeepOreConfig;
 
 /** Mirrors BOP 2.1.x gem-to-biome rules in CaveAbyss's negative terrain. */
 public final class BopIntegration {
@@ -99,24 +100,33 @@ public final class BopIntegration {
         if (deepOre == null) return;
         generatePlants(world, random, terrain, deepslate, chunkX, chunkZ);
         if (sourceOre == null) return;
+        DeepOreConfig.Rule gems = DeepOreConfig.BOP[0];
+        if (!DeepOreConfig.enabled(gems) || random.nextDouble() >= gems.chance) return;
         int stone = Block.getIdFromBlock(Blocks.stone);
         int deepId = Block.getIdFromBlock(deepOre);
         int normalId = Block.getIdFromBlock(sourceOre);
         // BOP attempts 12-17 singles above ground. The extra layer gets about
         // half that budget, keeping the total per chunk under control.
-        int attempts = 6 + random.nextInt(3);
+        int attempts = DeepOreConfig.attempts(gems, random);
         for (int n = 0; n < attempts; n++) {
             int x = random.nextInt(16), z = random.nextInt(16);
-            int y = -32 + random.nextInt(32);
+            int y = gems.minY + random.nextInt(gems.maxY - gems.minY + 1);
             BiomeGenBase biome = world.getWorldChunkManager().getBiomeGenAt(
                     (chunkX << 4) + x, (chunkZ << 4) + z);
             if (biome == null) continue;
             Integer gem = BIOME_GEMS.get(biome.getClass().getSimpleName());
             if (gem == null || !ENABLED[gem]) continue;
-            int index = ((y + 64) << 8) | (z << 4) | x;
-            if (terrain[index] == deepslate) terrain[index] = deepId | (gem << 16);
-            else if (terrain[index] == stone)
-                terrain[index] = normalId | (((gem + 1) * 2) << 16);
+            for (int step = 0; step < gems.size; step++) {
+                if (x >= 0 && x < 16 && z >= 0 && z < 16 && y >= -63 && y < 0) {
+                    int index = ((y + 64) << 8) | (z << 4) | x;
+                    if (terrain[index] == deepslate) terrain[index] = deepId | (gem << 16);
+                    else if (terrain[index] == stone)
+                        terrain[index] = normalId | (((gem + 1) * 2) << 16);
+                }
+                x += random.nextInt(3) - 1;
+                y += random.nextInt(3) - 1;
+                z += random.nextInt(3) - 1;
+            }
         }
     }
 
@@ -125,11 +135,14 @@ public final class BopIntegration {
         String biome = world.getWorldChunkManager().getBiomeGenAt(
                 (chunkX << 4) + 8, (chunkZ << 4) + 8).getClass().getSimpleName();
         int stone = Block.getIdFromBlock(Blocks.stone);
-        if (mushrooms != null && "BiomeGenFungiForest".equals(biome)) {
+        DeepOreConfig.Rule mushroomRule = DeepOreConfig.BOP[1];
+        if (mushrooms != null && "BiomeGenFungiForest".equals(biome)
+                && DeepOreConfig.enabled(mushroomRule) && random.nextDouble() < mushroomRule.chance) {
             int placed = 0, mushroomId = Block.getIdFromBlock(mushrooms);
-            for (int n = 0; n < 96 && placed < 4; n++) {
+            int limit = DeepOreConfig.attempts(mushroomRule, random);
+            for (int n = 0; n < limit * 24 && placed < limit; n++) {
                 int x = 1 + random.nextInt(14), z = 1 + random.nextInt(14);
-                int y = -60 + random.nextInt(58);
+                int y = mushroomRule.minY + random.nextInt(mushroomRule.maxY - mushroomRule.minY + 1);
                 int index = ((y + 64) << 8) | (z << 4) | x;
                 int support = terrain[index - 256];
                 if (terrain[index] == 0 && (support == stone || support == deepslate)) {
@@ -138,11 +151,14 @@ public final class BopIntegration {
                 }
             }
         }
-        if (moss != null && MOSS_BIOMES.contains(biome)) {
+        DeepOreConfig.Rule mossRule = DeepOreConfig.BOP[2];
+        if (moss != null && MOSS_BIOMES.contains(biome)
+                && DeepOreConfig.enabled(mossRule) && random.nextDouble() < mossRule.chance) {
             int placed = 0, mossId = Block.getIdFromBlock(moss);
-            for (int n = 0; n < 80 && placed < 6; n++) {
+            int limit = DeepOreConfig.attempts(mossRule, random);
+            for (int n = 0; n < limit * 14 && placed < limit; n++) {
                 int x = 1 + random.nextInt(14), z = 1 + random.nextInt(14);
-                int y = -60 + random.nextInt(58);
+                int y = mossRule.minY + random.nextInt(mossRule.maxY - mossRule.minY + 1);
                 int index = ((y + 64) << 8) | (z << 4) | x;
                 if (terrain[index] != 0) continue;
                 int side = 2 + random.nextInt(4);
