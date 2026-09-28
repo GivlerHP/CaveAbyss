@@ -22,16 +22,19 @@ import org.objectweb.asm.tree.VarInsnNode;
 public final class NegativeRenderTransformer implements IClassTransformer, Opcodes {
     private static final String GLOBAL = "net.minecraft.client.renderer.RenderGlobal";
     private static final String CACHE = "net.minecraft.world.ChunkCache";
+    private static final String TESSELLATOR = "net.minecraft.client.renderer.Tessellator";
     private static final String HOOK = "ru/givler/caveabyss/core/MinusOneHooks";
     private static final String SKY_HOOK = "ru/givler/caveabyss/client/SkyRenderHooks";
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
-        if (bytes == null || !GLOBAL.equals(transformedName) && !CACHE.equals(transformedName)) return bytes;
+        if (bytes == null || !GLOBAL.equals(transformedName) && !CACHE.equals(transformedName)
+                && !TESSELLATOR.equals(transformedName)) return bytes;
         ClassNode node = new ClassNode();
         new ClassReader(bytes).accept(node, 0);
         if (GLOBAL.equals(transformedName)) patchGlobal(node);
-        else patchCache(node);
+        else if (CACHE.equals(transformedName)) patchCache(node);
+        else patchTessellator(node);
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         node.accept(writer);
         return writer.toByteArray();
@@ -184,6 +187,41 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
             }
         }
         if (patched != 5) throw new IllegalStateException("CaveAbyss expected 5 ChunkCache patches; found " + patched);
+    }
+
+    /** Empty translucent passes are possible when a mod reports a rendered block without adding quads. */
+    private static void patchTessellator(ClassNode node) {
+        int patched = 0;
+        for (MethodNode method : node.methods) {
+            String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(node.name, method.name, method.desc);
+            if (!method.desc.equals("(FFF)Lnet/minecraft/client/shader/TesselatorVertexState;")
+                    || !mapped.equals("getVertexState") && !mapped.equals("func_147564_a")) continue;
+            for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                if (!(insn instanceof MethodInsnNode) || insn.getOpcode() != INVOKESPECIAL) continue;
+                MethodInsnNode call = (MethodInsnNode) insn;
+                if (!call.owner.equals("java/util/PriorityQueue") || !call.name.equals("<init>")
+                        || !call.desc.equals("(ILjava/util/Comparator;)V")) continue;
+                AbstractInsnNode capacity = insn.getPrevious();
+                while (capacity != null) {
+                    if (capacity instanceof FieldInsnNode && capacity.getOpcode() == GETFIELD) {
+                        FieldInsnNode field = (FieldInsnNode) capacity;
+                        String mappedField = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(node.name, field.name, field.desc);
+                        if (field.desc.equals("I") && (mappedField.equals("rawBufferIndex")
+                                || mappedField.equals("field_78406_i"))) break;
+                    }
+                    capacity = capacity.getPrevious();
+                }
+                if (capacity == null)
+                    throw new IllegalStateException("CaveAbyss Tessellator queue capacity pattern changed");
+                InsnList clamp = new InsnList();
+                clamp.add(new InsnNode(ICONST_1));
+                clamp.add(new MethodInsnNode(INVOKESTATIC, "java/lang/Math", "max", "(II)I", false));
+                method.instructions.insert(capacity, clamp);
+                patched++;
+                break;
+            }
+        }
+        if (patched != 1) throw new IllegalStateException("CaveAbyss expected 1 Tessellator patch; found " + patched);
     }
 
     private static void injectCacheRead(String owner, FieldNode worldField, MethodNode method, String hook,

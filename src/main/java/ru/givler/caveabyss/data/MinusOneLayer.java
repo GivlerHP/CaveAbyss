@@ -9,8 +9,11 @@ import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
+import java.util.Arrays;
 import net.minecraftforge.event.world.ChunkDataEvent;
+import net.minecraftforge.event.world.ChunkEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
 import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.world.DeepWorldGenerator;
@@ -122,8 +125,12 @@ public final class MinusOneLayer {
         int next = id == 0 ? 0 : id | (metadata << 16);
         Layer layer = layer(chunk);
         int index = index(x, y, z);
-        if (state(layer, index) == next) return false;
+        int previous = state(layer, index);
+        if (previous == next) return false;
         setState(layer, index, next);
+        Block oldBlock = Block.getBlockById(previous & 65535);
+        if (block.getTickRandomly() || oldBlock != null && oldBlock.getTickRandomly())
+            layer.randomTickSections[(y - MIN_Y) >> 4] = 0;
         chunk.setChunkModified();
         if (!world.isRemote) MinusOneNetwork.broadcast(world, x, y, z, next);
         return true;
@@ -139,7 +146,66 @@ public final class MinusOneLayer {
         }
         for (int i = 0; i < SIZE; i++)
             if (state(layer, i) == 0 && states[i] != 0) setState(layer, i, states[i]);
+        Arrays.fill(layer.randomTickSections, (byte)0);
         chunk.setChunkModified();
+    }
+
+    /** Terrain is written without callbacks, so exposed source liquids need their first scheduled tick. */
+    public static void activateGeneratedLiquids(Chunk chunk) {
+        if (!(chunk.worldObj instanceof WorldServer) || chunk.worldObj.provider.dimensionId != 0) return;
+        Layer layer = LAYERS.get(chunk);
+        if (layer == null || layer.ids == null) return;
+        WorldServer world = (WorldServer)chunk.worldObj;
+        int water = Block.getIdFromBlock(Blocks.water);
+        int lava = Block.getIdFromBlock(Blocks.lava);
+        int baseX = chunk.xPosition << 4, baseZ = chunk.zPosition << 4;
+        boolean changed = false;
+        for (int y = MIN_Y; y < 0; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+            int index = index(x, y, z);
+            int id = state(layer, index) & 65535;
+            if (id != water && id != lava) continue;
+            boolean exposed = x == 0 || x == 15 || z == 0 || z == 15
+                    || y == -1 && chunk.getBlock(x, 0, z) == Blocks.air
+                    || y < -1 && (state(layer, index + 256) & 65535) == 0
+                    || y > MIN_Y && (state(layer, index - 256) & 65535) == 0
+                    || x > 0 && (state(layer, index - 1) & 65535) == 0
+                    || x < 15 && (state(layer, index + 1) & 65535) == 0
+                    || z > 0 && (state(layer, index - 16) & 65535) == 0
+                    || z < 15 && (state(layer, index + 16) & 65535) == 0;
+            if (!exposed) continue;
+            Block flowing = id == water ? Blocks.flowing_water : Blocks.flowing_lava;
+            setState(layer, index, Block.getIdFromBlock(flowing));
+            changed = true;
+            world.func_147446_b(baseX + x, y, baseZ + z, flowing, flowing.tickRate(world), 0);
+        }
+        if (changed) chunk.setChunkModified();
+    }
+
+    @SubscribeEvent
+    public void onChunkLoad(ChunkEvent.Load event) {
+        activateGeneratedLiquids(event.getChunk());
+    }
+
+    /** Mirrors ExtendedBlockStorage.getNeedsRandomTick without scanning on every tick. */
+    public static boolean needsRandomTick(Chunk chunk, int section) {
+        if (section < 0 || section >= 4) return false;
+        Layer layer = LAYERS.get(chunk);
+        if (layer == null || layer.ids == null) return false;
+        byte cached = layer.randomTickSections[section];
+        if (cached == 0) {
+            cached = 1;
+            int start = section << 12;
+            for (int index = start; index < start + 4096; index++) {
+                int id = state(layer, index) & 65535;
+                Block block = Block.getBlockById(id);
+                if (block != null && block.getTickRandomly()) {
+                    cached = 2;
+                    break;
+                }
+            }
+            layer.randomTickSections[section] = cached;
+        }
+        return cached == 2;
     }
 
     public static byte[] copySection(Chunk chunk, int section, int part) {
@@ -337,5 +403,6 @@ public final class MinusOneLayer {
         private byte[] data;
         private byte[] skyLight;
         private byte[] blockLight;
+        private final byte[] randomTickSections = new byte[4];
     }
 }

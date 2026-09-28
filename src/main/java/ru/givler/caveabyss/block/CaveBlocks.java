@@ -4,6 +4,7 @@ import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
 import net.minecraftforge.oredict.OreDictionary;
 
 public final class CaveBlocks {
@@ -22,6 +23,9 @@ public final class CaveBlocks {
     public static Block lapisOre;
     public static Block diamondOre;
     public static Block emeraldOre;
+    public static Block smoothBasalt, calcite, amethystBlock, buddingAmethyst;
+    public static Block[] amethystBuds = new Block[4];
+    public static Item amethystShard;
 
     private CaveBlocks() { }
 
@@ -43,6 +47,18 @@ public final class CaveBlocks {
         lapisOre = ore("deepslate_lapis_ore", Blocks.lapis_ore, 1);
         diamondOre = ore("deepslate_diamond_ore", Blocks.diamond_ore, 2);
         emeraldOre = ore("deepslate_emerald_ore", Blocks.emerald_ore, 2);
+        // No dedicated basalt sprite was supplied; reuse the existing dark
+        // deepslate texture while keeping basalt a separate block.
+        smoothBasalt = decorative("smooth_basalt", "deepslate");
+        calcite = decorative("calcite");
+        amethystBlock = decorative("amethyst_block");
+        buddingAmethyst = register(new BlockBuddingAmethyst(), "budding_amethyst");
+        String[] stages = {"small_amethyst_bud", "medium_amethyst_bud", "large_amethyst_bud", "amethyst_cluster"};
+        for (int i = 0; i < stages.length; i++)
+            amethystBuds[i] = register(new BlockAmethystBud(stages[i], i), stages[i]);
+        amethystShard = new Item().setUnlocalizedName("amethyst_shard")
+                .setTextureName("caveabyss:amethyst_shard");
+        GameRegistry.registerItem(amethystShard, "amethyst_shard");
     }
 
     private static Block ore(String name, Block vanilla, int level) {
@@ -54,8 +70,12 @@ public final class CaveBlocks {
     }
 
     private static Block decorative(String name) {
+        return decorative(name, name);
+    }
+
+    private static Block decorative(String name, String texture) {
         Block block = new Block(Material.rock) { }
-                .setBlockName(name).setBlockTextureName("caveabyss:" + name)
+                .setBlockName(name).setBlockTextureName("caveabyss:" + texture)
                 .setHardness(3.5F).setResistance(6.0F).setStepSound(Block.soundTypeStone);
         block.setHarvestLevel("pickaxe", 0);
         return register(block, name);

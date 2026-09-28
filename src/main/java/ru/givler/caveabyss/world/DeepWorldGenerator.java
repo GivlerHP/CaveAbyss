@@ -76,11 +76,15 @@ public final class DeepWorldGenerator {
         ThaumcraftIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
         BopIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
         Mf2Integration.generate(world, random, terrain, deepslate);
+        AmethystGeodes.generate(seed, chunkX, chunkZ, terrain);
         return terrain;
     }
 
     public static void onProvideChunk(Chunk chunk, int[] terrain) {
-        if (terrain != null) MinusOneLayer.fillGeneratedChunk(chunk, terrain);
+        if (terrain != null) {
+            MinusOneLayer.fillGeneratedChunk(chunk, terrain);
+            MinusOneLayer.activateGeneratedLiquids(chunk);
+        }
     }
 
     /** Generates only the missing lower layer in an existing saved chunk. */
@@ -94,6 +98,7 @@ public final class DeepWorldGenerator {
         int[] terrain = prepareTerrain(world, upper, chunk.xPosition, chunk.zPosition, false);
         if (terrain == null) return;
         MinusOneLayer.fillGeneratedChunk(chunk, terrain);
+        MinusOneLayer.activateGeneratedLiquids(chunk);
         ExtendedBlockStorage bottom = chunk.getBlockStorageArray()[0];
         if (bottom != null) {
             for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++)

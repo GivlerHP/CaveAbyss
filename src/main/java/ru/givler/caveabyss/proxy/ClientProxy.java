@@ -5,6 +5,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftOreRenderer;
+import ru.givler.caveabyss.client.AmethystBudRenderer;
 
 public class ClientProxy extends CommonProxy {
 
@@ -16,6 +17,7 @@ public class ClientProxy extends CommonProxy {
 	@Override
 	public void init(FMLInitializationEvent event) {
 		super.init(event);
+		AmethystBudRenderer.register();
 		if (ThaumcraftIntegration.isEnabled()) ThaumcraftOreRenderer.register();
 	}
 	

@@ -20,11 +20,13 @@ public final class CorePatchSmoke {
     public static void main(String[] args) throws Exception {
         check(new WorldMinusOneTransformer(), "net.minecraft.world.World");
         check(new WorldMinusOneTransformer(), "net.minecraft.world.WorldManager");
+        check(new DeepRandomTickTransformer(), "net.minecraft.world.WorldServer");
         check(new ChunkNegativeTransformer(), "net.minecraft.world.chunk.Chunk");
         check(new VoidVisualTransformer(), "net.minecraft.client.renderer.EntityRenderer");
         check(new VoidVisualTransformer(), "net.minecraft.client.multiplayer.WorldClient");
         check(new NegativeRenderTransformer(), "net.minecraft.client.renderer.RenderGlobal");
         check(new NegativeRenderTransformer(), "net.minecraft.world.ChunkCache");
+        check(new NegativeRenderTransformer(), "net.minecraft.client.renderer.Tessellator");
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.ChunkProviderGenerate");
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.feature.WorldGenDungeons");
         check(new DeepChunkGeneratorTransformer(), "net.minecraft.world.gen.structure.StructureBoundingBox");
@@ -96,6 +98,22 @@ public final class CorePatchSmoke {
             ClassNode node = new ClassNode();
             new ClassReader(patched).accept(node, 0);
             assertNegativeBoundary(node, "(III)Lnet/minecraft/tileentity/TileEntity;");
+        }
+        if (name.equals("net.minecraft.world.WorldServer")) {
+            ClassNode node = new ClassNode();
+            new ClassReader(patched).accept(node, 0);
+            boolean found = false;
+            for (MethodNode method : node.methods) {
+                if (!method.desc.equals("()V")) continue;
+                for (AbstractInsnNode instruction = method.instructions.getFirst(); instruction != null;
+                     instruction = instruction.getNext()) {
+                    if (!(instruction instanceof MethodInsnNode)) continue;
+                    MethodInsnNode call = (MethodInsnNode)instruction;
+                    if (call.owner.equals("ru/givler/caveabyss/core/DeepRandomTickHooks")
+                            && call.name.equals("tickNegativeSections")) found = true;
+                }
+            }
+            if (!found) throw new AssertionError("WorldServer negative random tick hook missing");
         }
         if (name.equals("net.minecraft.client.renderer.RenderGlobal")) {
             ClassNode node = new ClassNode();

@@ -36,3 +36,13 @@ tile.deepslate_mf2_nitre_ore.name=Глубинная селитровая руд
 tile.deepslate_mf2_sulfur_ore.name=Глубинная серная руда
 tile.deepslate_mf2_mythic_ore.name=Глубинная мифиевая руда
 caveabyss.depleted_ore=Эта руда истощена, её нельзя установить повторно
+
+tile.smooth_basalt.name=Гладкий базальт
+tile.calcite.name=Кальцит
+tile.amethyst_block.name=Аметистовый блок
+tile.budding_amethyst.name=Цветущий аметист
+tile.small_amethyst_bud.name=Малый аметистовый бутон
+tile.medium_amethyst_bud.name=Средний аметистовый бутон
+tile.large_amethyst_bud.name=Большой аметистовый бутон
+tile.amethyst_cluster.name=Аметистовый кластер
+item.amethyst_shard.name=Аметистовый осколок

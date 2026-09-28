@@ -7,10 +7,8 @@ import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
 import ru.givler.caveabyss.block.CaveBlocks;
-import ru.givler.caveabyss.command.ProbeCommand;
 import ru.givler.caveabyss.proxy.CommonProxy;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
@@ -60,8 +58,4 @@ public class CaveAbyss {
 		proxy.postInit(event);
 	}
 
-	@EventHandler
-	public void serverStarting(FMLServerStartingEvent event) {
-		event.registerServerCommand(new ProbeCommand());
-	}
 }

@@ -36,3 +36,13 @@ tile.deepslate_mf2_nitre_ore.name=Deepslate Nitre Ore
 tile.deepslate_mf2_sulfur_ore.name=Deepslate Sulfur Ore
 tile.deepslate_mf2_mythic_ore.name=Deepslate Mythic Ore
 caveabyss.depleted_ore=This ore is depleted and cannot be placed again
+
+tile.smooth_basalt.name=Smooth Basalt
+tile.calcite.name=Calcite
+tile.amethyst_block.name=Block of Amethyst
+tile.budding_amethyst.name=Budding Amethyst
+tile.small_amethyst_bud.name=Small Amethyst Bud
+tile.medium_amethyst_bud.name=Medium Amethyst Bud
+tile.large_amethyst_bud.name=Large Amethyst Bud
+tile.amethyst_cluster.name=Amethyst Cluster
+item.amethyst_shard.name=Amethyst Shard
