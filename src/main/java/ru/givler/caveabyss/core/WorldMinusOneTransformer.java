@@ -69,9 +69,13 @@ public final class WorldMinusOneTransformer implements IClassTransformer, Opcode
             } else if (desc.equals("(IIIZ)I") && (mappedName.equals("getBlockLightValue_do") || mappedName.equals("func_72849_a"))) {
                 injectLight(method, "getBlockBrightness", "(Lnet/minecraft/world/World;IIIZ)I", IRETURN, 2, 4);
                 patched++;
+            } else if (desc.equals("(Lnet/minecraft/entity/Entity;Z)V")
+                    && (mappedName.equals("updateEntityWithOptionalForce") || mappedName.equals("func_72866_a"))) {
+                clampEntitySection(method);
+                patched++;
             }
         }
-        if (patched != 11) throw new IllegalStateException("CaveAbyss expected 11 World methods; found " + patched);
+        if (patched != 12) throw new IllegalStateException("CaveAbyss expected 12 World methods; found " + patched);
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         node.accept(writer);
         return writer.toByteArray();
@@ -175,6 +179,18 @@ public final class WorldMinusOneTransformer implements IClassTransformer, Opcode
             return;
         }
         throw new IllegalStateException("CaveAbyss could not extend World.getTileEntity bounds");
+    }
+
+    private static void clampEntitySection(MethodNode method) {
+        for (org.objectweb.asm.tree.AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+            if (!(insn instanceof VarInsnNode) || insn.getOpcode() != ISTORE || ((VarInsnNode) insn).var != 9) continue;
+            InsnList clamp = new InsnList();
+            clamp.add(new InsnNode(ICONST_0));
+            clamp.add(new MethodInsnNode(INVOKESTATIC, "java/lang/Math", "max", "(II)I", false));
+            method.instructions.insertBefore(insn, clamp);
+            return;
+        }
+        throw new IllegalStateException("CaveAbyss Entity section Y pattern changed");
     }
 
     private static void injectLight(MethodNode method, String hook, String desc, int returnOpcode, int yIndex, int lastArg) {

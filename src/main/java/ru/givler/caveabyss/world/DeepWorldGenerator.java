@@ -5,6 +5,7 @@ import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.MapGenCaves;
 import net.minecraft.world.gen.MapGenRavine;
 import ru.givler.caveabyss.block.CaveBlocks;
@@ -23,6 +24,11 @@ public final class DeepWorldGenerator {
     private DeepWorldGenerator() { }
 
     public static int[] prepareTerrain(World world, Block[] blocks, int chunkX, int chunkZ) {
+        return prepareTerrain(world, blocks, chunkX, chunkZ, true);
+    }
+
+    private static int[] prepareTerrain(World world, Block[] blocks, int chunkX, int chunkZ,
+                                        boolean connectCaves) {
         if (world.provider.dimensionId != 0 || world.isRemote) return null;
         for (int i = 0; i < blocks.length; i++)
             if ((i & 255) <= 4 && blocks[i] == Blocks.bedrock) blocks[i] = Blocks.stone;
@@ -52,7 +58,8 @@ public final class DeepWorldGenerator {
         }
 
         carveVanillaCaves(world, blocks, terrain, chunkX, chunkZ);
-        connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
+        if (connectCaves) connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
+        fillDeepLiquids(terrain, random);
 
         // Keep common utility ores worth mining in the lower layer, while
         // coal and diamonds remain scarce compared with their upper budget.
@@ -74,6 +81,29 @@ public final class DeepWorldGenerator {
 
     public static void onProvideChunk(Chunk chunk, int[] terrain) {
         if (terrain != null) MinusOneLayer.fillGeneratedChunk(chunk, terrain);
+    }
+
+    /** Generates only the missing lower layer in an existing saved chunk. */
+    public static void migrateChunk(Chunk chunk) {
+        World world = chunk.worldObj;
+        if (world.isRemote || world.provider.dimensionId != 0) return;
+        Block[] upper = new Block[65536];
+        for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++)
+            for (int y = 0; y < 256; y++)
+                upper[((x * 16 + z) << 8) | y] = chunk.getBlock(x, y, z);
+        int[] terrain = prepareTerrain(world, upper, chunk.xPosition, chunk.zPosition, false);
+        if (terrain == null) return;
+        MinusOneLayer.fillGeneratedChunk(chunk, terrain);
+        ExtendedBlockStorage bottom = chunk.getBlockStorageArray()[0];
+        if (bottom != null) {
+            for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++)
+                for (int y = 0; y <= 4; y++)
+                    if (bottom.getBlockByExtId(x, y, z) == Blocks.bedrock) {
+                        bottom.func_150818_a(x, y, z, Blocks.stone);
+                        bottom.setExtBlockMetadata(x, y, z, 0);
+                    }
+        }
+        chunk.setChunkModified();
     }
 
     private static void vein(Random random, int[] terrain, int stone, int deepslate,
@@ -154,7 +184,8 @@ public final class DeepWorldGenerator {
                     int column = (tx * 16 + tz) << 8;
                     for (int ty = 1; ty <= 12; ty++) {
                         Block cave = upper[column | ty];
-                        if ((cave != null && cave != Blocks.air) || upper[column | (ty + 1)] != Blocks.stone)
+                        if ((cave != null && cave != Blocks.air) || upper[column | (ty + 1)] != Blocks.stone
+                                || nearUpperLiquid(upper, tx, ty, tz, 3))
                             continue;
                         int score = (tx - x) * (tx - x) + (tz - z) * (tz - z) + (ty - y) * (ty - y);
                         if (score < best) {
@@ -190,9 +221,46 @@ public final class DeepWorldGenerator {
                             if (lower[index] == stone || lower[index] == deepslate) lower[index] = 0;
                         } else {
                             int index = ((x * 16 + z) << 8) | y;
-                            if (upper[index] == Blocks.stone) upper[index] = Blocks.air;
+                            if (upper[index] == Blocks.stone && !nearUpperLiquid(upper, x, y, z, 2))
+                                upper[index] = Blocks.air;
                         }
                     }
+        }
+    }
+
+    private static boolean nearUpperLiquid(Block[] upper, int x, int y, int z, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) for (int dz = -radius; dz <= radius; dz++)
+            for (int dy = -radius; dy <= radius; dy++) {
+                int bx = x + dx, by = y + dy, bz = z + dz;
+                if (bx < 0 || bx >= 16 || bz < 0 || bz >= 16 || by < 0 || by >= 256) continue;
+                Block block = upper[((bx * 16 + bz) << 8) | by];
+                if (block != null && (block == Blocks.lava || block == Blocks.flowing_lava
+                        || block == Blocks.water || block == Blocks.flowing_water)) return true;
+            }
+        return false;
+    }
+
+    private static void fillDeepLiquids(int[] terrain, Random random) {
+        int lava = Block.getIdFromBlock(Blocks.lava);
+        int water = Block.getIdFromBlock(Blocks.water);
+        // Cave air below the lava level becomes a connected, naturally shaped pool.
+        for (int y = -54; y <= -52; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+            int index = ((y + 64) << 8) | (z << 4) | x;
+            if (terrain[index] == 0) terrain[index] = lava;
+        }
+        // Small water pools form on existing cave floors, away from the lava level.
+        if (random.nextInt(3) != 0) return;
+        for (int attempt = 0; attempt < 48; attempt++) {
+            int x = 3 + random.nextInt(10), z = 3 + random.nextInt(10);
+            int y = -43 + random.nextInt(29);
+            int index = ((y + 64) << 8) | (z << 4) | x;
+            if (terrain[index] != 0 || terrain[index - 256] == 0) continue;
+            for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
+                if (dx * dx + dz * dz > 5) continue;
+                int site = ((y + 64) << 8) | ((z + dz) << 4) | (x + dx);
+                if (terrain[site] == 0 && terrain[site - 256] != 0) terrain[site] = water;
+            }
+            return;
         }
     }
 

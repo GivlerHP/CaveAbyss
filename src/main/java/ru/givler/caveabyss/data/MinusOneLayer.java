@@ -13,6 +13,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.event.world.ChunkDataEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
 import ru.givler.caveabyss.block.CaveBlocks;
+import ru.givler.caveabyss.world.DeepWorldGenerator;
 
 /** Four negative sections in the byte/nibble layout used by vanilla chunks. */
 public final class MinusOneLayer {
@@ -293,6 +294,26 @@ public final class MinusOneLayer {
                         setState(layer, (63 << 8) | i, ids[i] | ((metadata[i] & 15) << 16));
         }
         LAYERS.put(event.getChunk(), layer);
+        if (!event.getChunk().worldObj.isRemote
+                && event.getChunk().worldObj.provider.dimensionId == 0 && needsMigration(data))
+            DeepWorldGenerator.migrateChunk(event.getChunk());
+    }
+
+    static boolean needsMigration(NBTTagCompound data) {
+        if (data.hasKey(OLD_TAG, 10)) {
+            int[] blocks = data.getCompoundTag(OLD_TAG).getIntArray("Blocks");
+            for (int block : blocks) if (block != 0) return false;
+            return true;
+        }
+        if (!data.hasKey(TAG, 10)) return true;
+        NBTTagCompound saved = data.getCompoundTag(TAG);
+        if (saved.getByte("Format") != 2) return saved.getIntArray("Blocks").length == 0;
+        byte[] ids = saved.getByteArray("Ids");
+        if (ids.length != SIZE) return true;
+        for (byte id : ids) if (id != 0) return false;
+        byte[] add = saved.getByteArray("Add");
+        for (byte value : add) if (value != 0) return false;
+        return true;
     }
 
     @SubscribeEvent

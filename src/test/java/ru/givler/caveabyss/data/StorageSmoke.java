@@ -3,6 +3,7 @@ package ru.givler.caveabyss.data;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import net.minecraft.nbt.NBTTagCompound;
 
 /** Exercises the compact block and light codecs without starting Minecraft. */
 public final class StorageSmoke {
@@ -44,6 +45,27 @@ public final class StorageSmoke {
         Field blockIds = layerType.getDeclaredField("ids");
         blockIds.setAccessible(true);
         if (((byte[]) blockIds.get(layer)).length != 16384) throw new AssertionError("Unexpected ID storage size");
+        checkMigrationMarker();
         System.out.println("Packed negative storage round trip passed");
+    }
+
+    private static void checkMigrationMarker() {
+        NBTTagCompound chunk = new NBTTagCompound();
+        if (!MinusOneLayer.needsMigration(chunk)) throw new AssertionError("Vanilla chunk migration skipped");
+        NBTTagCompound empty = new NBTTagCompound();
+        empty.setByte("Format", (byte) 2);
+        chunk.setTag("CaveAbyssNegative", empty);
+        if (!MinusOneLayer.needsMigration(chunk)) throw new AssertionError("Empty saved layer migration skipped");
+        byte[] ids = new byte[16384];
+        ids[0] = 1;
+        empty.setByteArray("Ids", ids);
+        if (MinusOneLayer.needsMigration(chunk)) throw new AssertionError("Existing lower layer overwritten");
+        chunk.removeTag("CaveAbyssNegative");
+        NBTTagCompound legacy = new NBTTagCompound();
+        legacy.setIntArray("Blocks", new int[] {1});
+        chunk.setTag("CaveAbyssMinusOne", legacy);
+        if (MinusOneLayer.needsMigration(chunk)) throw new AssertionError("Legacy lower layer overwritten");
+        legacy.setIntArray("Blocks", new int[0]);
+        if (!MinusOneLayer.needsMigration(chunk)) throw new AssertionError("Empty legacy layer migration skipped");
     }
 }
