@@ -31,6 +31,7 @@ public final class CorePatchSmoke {
         check(new BopPlantSupportTransformer(), "biomesoplenty.common.blocks.BlockBOPMushroom");
         check(new BopPlantSupportTransformer(), "biomesoplenty.common.blocks.BlockMoss");
         assertDirectChunkStorage();
+        CompatibilityPatchSmoke.check();
         ru.givler.caveabyss.data.StorageSmoke.check();
         ru.givler.caveabyss.world.DeepWorldGeneratorSmoke.check();
         ru.givler.caveabyss.integration.mf2.Mf2IntegrationSmoke.check();
