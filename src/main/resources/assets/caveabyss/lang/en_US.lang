@@ -46,3 +46,7 @@ tile.medium_amethyst_bud.name=Medium Amethyst Bud
 tile.large_amethyst_bud.name=Large Amethyst Bud
 tile.amethyst_cluster.name=Amethyst Cluster
 item.amethyst_shard.name=Amethyst Shard
+tile.magma.name=Magma Block
+tile.seagrass.name=Seagrass
+tile.tall_seagrass.name=Tall Seagrass
+tile.kelp.name=Kelp

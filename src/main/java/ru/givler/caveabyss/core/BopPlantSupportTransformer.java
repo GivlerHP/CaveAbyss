@@ -17,11 +17,13 @@ import org.objectweb.asm.tree.VarInsnNode;
 public final class BopPlantSupportTransformer implements IClassTransformer, Opcodes {
     private static final String MUSHROOM = "biomesoplenty.common.blocks.BlockBOPMushroom";
     private static final String MOSS = "biomesoplenty.common.blocks.BlockMoss";
+    private static final String FLOWER2 = "biomesoplenty.common.blocks.BlockBOPFlower2";
     private static final String HOOKS = "ru/givler/caveabyss/core/BopPlantSupportHooks";
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] bytes) {
-        if (bytes == null || !MUSHROOM.equals(transformedName) && !MOSS.equals(transformedName))
+        if (bytes == null || !MUSHROOM.equals(transformedName) && !MOSS.equals(transformedName)
+                && !FLOWER2.equals(transformedName))
             return bytes;
         ClassNode node = new ClassNode();
         new ClassReader(bytes).accept(node, 0);
@@ -35,6 +37,12 @@ public final class BopPlantSupportTransformer implements IClassTransformer, Opco
                 } else if (("canBlockStay".equals(method.name) || "func_149718_j".equals(method.name))
                         && "(Lnet/minecraft/world/World;III)Z".equals(method.desc)) {
                     prepend(method, "glowshroomStay", false);
+                    patched++;
+                }
+            } else if (FLOWER2.equals(transformedName)) {
+                if ("isValidPosition".equals(method.name)
+                        && "(Lnet/minecraft/world/World;IIII)Z".equals(method.desc)) {
+                    prepend(method, "minersDelightPosition", true);
                     patched++;
                 }
             } else if (("canPlaceBlockOnSide".equals(method.name) || "func_149707_d".equals(method.name))

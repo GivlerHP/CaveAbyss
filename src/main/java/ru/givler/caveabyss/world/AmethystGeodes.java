@@ -15,8 +15,7 @@ public final class AmethystGeodes {
         for (int cx = chunkX - 1; cx <= chunkX + 1; cx++)
             for (int cz = chunkZ - 1; cz <= chunkZ + 1; cz++) {
                 Random random = new Random(seed ^ SALT ^ (cx * 341873128712L) ^ (cz * 132897987541L));
-                // All geodes live in just 64 negative blocks; vanilla's 1/24
-                // rate looks crowded here.
+                // The lower layer has only 64 blocks of height, so space geodes out.
                 if (random.nextInt(64) != 0) continue;
                 int x = (cx << 4) + random.nextInt(16);
                 int y = -48 + random.nextInt(36);
@@ -25,13 +24,12 @@ public final class AmethystGeodes {
                 double ry = 5.0 + random.nextDouble() * 2.0;
                 double rz = 6.0 + random.nextDouble() * 2.5;
                 long shapeSeed = random.nextLong();
-                int opening = random.nextInt(5) == 0 ? -1 : random.nextInt(6);
-                place(seed, shapeSeed, x, y, z, rx, ry, rz, opening, chunkX, chunkZ, terrain);
+                place(seed, shapeSeed, x, y, z, rx, ry, rz, chunkX, chunkZ, terrain);
             }
     }
 
     private static void place(long seed, long salt, int cx, int cy, int cz,
-                              double rx, double ry, double rz, int opening,
+                              double rx, double ry, double rz,
                               int chunkX, int chunkZ, int[] terrain) {
         int minX = Math.max(chunkX << 4, cx - 16), maxX = Math.min((chunkX << 4) + 15, cx + 16);
         int minZ = Math.max(chunkZ << 4, cz - 16), maxZ = Math.min((chunkZ << 4) + 15, cz + 16);
@@ -50,11 +48,8 @@ public final class AmethystGeodes {
                 if (old == bedrock || existing == null || existing.getMaterial() != Material.rock)
                     continue;
                 double d = distance(salt, wx, y, wz, cx, cy, cz, rx, ry, rz);
-                if (d > 1.75) continue;
-                if (opening >= 0 && inOpening(opening, wx - cx, y - cy, wz - cz, rx, ry, rz)) {
-                    terrain[index] = 0;
-                } else if (d > 1.22) continue;
-                else if (d > 1.10) terrain[index] = basalt;
+                if (d > 1.22) continue;
+                if (d > 1.10) terrain[index] = basalt;
                 else if (d > 0.98) terrain[index] = calcite;
                 else if (d > 0.79) {
                     // Roughly one in twelve inner wall blocks can grow crystals.
@@ -83,7 +78,6 @@ public final class AmethystGeodes {
                     double supportDistance = distance(salt, bx, by, bz, cx, cy, cz, rx, ry, rz);
                     if (by < -63 || by >= 0 || supportDistance <= 0.79
                             || supportDistance > 0.98
-                            || opening >= 0 && inOpening(opening, bx - cx, by - cy, bz - cz, rx, ry, rz)
                             || hash(salt ^ 0x41554DL, bx, by, bz) % 12 != 0) continue;
                     if (hash(seed ^ salt, wx, y, wz) % 3 == 0) {
                         int stage = (int)(hash(salt, wx, y, wz) % 4);
@@ -92,17 +86,6 @@ public final class AmethystGeodes {
                     break;
                 }
             }
-    }
-
-    private static boolean inOpening(int face, int x, int y, int z,
-                                     double rx, double ry, double rz) {
-        double along = face == 0 ? -y / ry : face == 1 ? y / ry
-                : face == 2 ? -z / rz : face == 3 ? z / rz
-                : face == 4 ? -x / rx : x / rx;
-        double across = face < 2 ? x * x / (rx * rx) + z * z / (rz * rz)
-                : face < 4 ? x * x / (rx * rx) + y * y / (ry * ry)
-                : y * y / (ry * ry) + z * z / (rz * rz);
-        return along > 0.48 && across < 0.07;
     }
 
     private static double distance(long seed, int x, int y, int z, int cx, int cy, int cz,

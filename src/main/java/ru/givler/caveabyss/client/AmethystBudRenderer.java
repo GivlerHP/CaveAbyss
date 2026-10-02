@@ -32,7 +32,7 @@ public final class AmethystBudRenderer implements ISimpleBlockRenderingHandler {
         tess.startDrawingQuads();
         tess.setBrightness(0xF000F0);
         tess.setColorOpaque_F(1, 1, 1);
-        draw(tess, block.getIcon(0, metadata), ((BlockAmethystBud)block).getStage(), 1, 0, 0, 0);
+        draw(tess, block.getIcon(0, metadata), 1, 0, 0, 0);
         tess.draw();
         GL11.glPopMatrix();
     }
@@ -44,11 +44,11 @@ public final class AmethystBudRenderer implements ISimpleBlockRenderingHandler {
         tess.setBrightness(block.getMixedBrightnessForBlock(world, x, y, z));
         tess.setColorOpaque_F(1, 1, 1);
         draw(tess, block.getIcon(0, world.getBlockMetadata(x, y, z)),
-                ((BlockAmethystBud)block).getStage(), world.getBlockMetadata(x, y, z), x, y, z);
+                world.getBlockMetadata(x, y, z), x, y, z);
         return true;
     }
 
-    private static void draw(Tessellator tess, IIcon icon, int stage, int face, double x, double y, double z) {
+    private static void draw(Tessellator tess, IIcon icon, int face, double x, double y, double z) {
         // Local U/V span the support face; W points away from the support.
         double[] origin = {x + .5, y + .5, z + .5};
         double[] u, v, w;
@@ -60,15 +60,15 @@ public final class AmethystBudRenderer implements ISimpleBlockRenderingHandler {
             case 5: origin[0] -= .5; u = vec(0, 0, -1); v = vec(0, 1, 0); w = vec(1, 0, 0); break;
             default: origin[1] -= .5; u = vec(1, 0, 0); v = vec(0, 0, 1); w = vec(0, 1, 0); break;
         }
-        double half = (stage == 0 ? 5 : stage == 1 ? 6 : stage == 2 ? 7 : 8) / 16.0;
-        double length = (stage == 0 ? 6 : stage == 1 ? 10 : stage == 2 ? 13 : 16) / 16.0;
+        // Every stage uses a full 16x16 plane; transparent pixels in its own texture define its size.
+        double half = 0.5;
+        double length = 1.0;
         for (int diagonal = 0; diagonal < 2; diagonal++) {
             double[] a = vertex(origin, u, v, w, -half, diagonal == 0 ? -half : half, 0);
             double[] b = vertex(origin, u, v, w, half, diagonal == 0 ? half : -half, 0);
             double[] c = vertex(origin, u, v, w, half, diagonal == 0 ? half : -half, length);
             double[] d = vertex(origin, u, v, w, -half, diagonal == 0 ? -half : half, length);
-            quad(tess, a, b, c, d, icon, false);
-            quad(tess, d, c, b, a, icon, true);
+            quad(tess, a, b, c, d, icon);
         }
     }
 
@@ -83,13 +83,19 @@ public final class AmethystBudRenderer implements ISimpleBlockRenderingHandler {
     }
 
     private static void quad(Tessellator t, double[] a, double[] b, double[] c, double[] d,
-                             IIcon icon, boolean back) {
-        double left = back ? icon.getMaxU() : icon.getMinU();
-        double right = back ? icon.getMinU() : icon.getMaxU();
-        t.addVertexWithUV(a[0], a[1], a[2], left, icon.getMaxV());
-        t.addVertexWithUV(b[0], b[1], b[2], right, icon.getMaxV());
-        t.addVertexWithUV(c[0], c[1], c[2], right, icon.getMinV());
-        t.addVertexWithUV(d[0], d[1], d[2], left, icon.getMinV());
+                             IIcon icon) {
+        double left = icon.getMinU(), right = icon.getMaxU();
+        double bottom = icon.getMaxV(), top = icon.getMinV();
+        t.addVertexWithUV(a[0], a[1], a[2], left, bottom);
+        t.addVertexWithUV(b[0], b[1], b[2], right, bottom);
+        t.addVertexWithUV(c[0], c[1], c[2], right, top);
+        t.addVertexWithUV(d[0], d[1], d[2], left, top);
+        // Reverse winding while keeping the same UV at each corner. Reassigning
+        // bottom UV to d/c would turn the back face upside down.
+        t.addVertexWithUV(a[0], a[1], a[2], left, bottom);
+        t.addVertexWithUV(d[0], d[1], d[2], left, top);
+        t.addVertexWithUV(c[0], c[1], c[2], right, top);
+        t.addVertexWithUV(b[0], b[1], b[2], right, bottom);
     }
 
     @Override

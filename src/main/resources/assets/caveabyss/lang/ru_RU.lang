@@ -46,3 +46,7 @@ tile.medium_amethyst_bud.name=Средний аметистовый бутон
 tile.large_amethyst_bud.name=Большой аметистовый бутон
 tile.amethyst_cluster.name=Аметистовый кластер
 item.amethyst_shard.name=Аметистовый осколок
+tile.magma.name=Магма
+tile.seagrass.name=Морская трава
+tile.tall_seagrass.name=Высокая морская трава
+tile.kelp.name=Ламинария

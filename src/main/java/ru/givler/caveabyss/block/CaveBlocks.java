@@ -25,6 +25,7 @@ public final class CaveBlocks {
     public static Block emeraldOre;
     public static Block smoothBasalt, calcite, amethystBlock, buddingAmethyst;
     public static Block[] amethystBuds = new Block[4];
+    public static Block magma, seagrass, tallSeagrass, kelp;
     public static Item amethystShard;
 
     private CaveBlocks() { }
@@ -59,6 +60,12 @@ public final class CaveBlocks {
         amethystShard = new Item().setUnlocalizedName("amethyst_shard")
                 .setTextureName("caveabyss:amethyst_shard");
         GameRegistry.registerItem(amethystShard, "amethyst_shard");
+        magma = register(new BlockMagma(), "magma");
+        seagrass = new BlockSeagrass(false);
+        tallSeagrass = new BlockSeagrass(true);
+        GameRegistry.registerBlock(seagrass, ItemBlockSeagrass.class, "seagrass");
+        GameRegistry.registerBlock(tallSeagrass, ItemBlockSeagrass.class, "tall_seagrass");
+        kelp = register(new BlockKelp(), "kelp");
     }
 
     private static Block ore(String name, Block vanilla, int level) {

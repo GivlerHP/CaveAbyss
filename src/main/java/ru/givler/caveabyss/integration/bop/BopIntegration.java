@@ -30,6 +30,7 @@ public final class BopIntegration {
     private static Block sourceOre;
     private static Block mushrooms;
     private static Block moss;
+    private static Block flowers2;
 
     static {
         // BOP's biome decorators use source metadata 2, 4, ... 14.
@@ -77,6 +78,7 @@ public final class BopIntegration {
         sourceOre = GameRegistry.findBlock("BiomesOPlenty", "gemOre");
         mushrooms = GameRegistry.findBlock("BiomesOPlenty", "mushrooms");
         moss = GameRegistry.findBlock("BiomesOPlenty", "moss");
+        flowers2 = GameRegistry.findBlock("BiomesOPlenty", "flowers2");
         if (sourceOre == null) {
             LOG.warn("BOP gemOre was not found; deep BOP gem generation is disabled");
             return;
@@ -135,6 +137,7 @@ public final class BopIntegration {
         String biome = world.getWorldChunkManager().getBiomeGenAt(
                 (chunkX << 4) + 8, (chunkZ << 4) + 8).getClass().getSimpleName();
         int stone = Block.getIdFromBlock(Blocks.stone);
+        generateMinersDelight(world, random, terrain, stone, deepslate, chunkX, chunkZ);
         DeepOreConfig.Rule mushroomRule = DeepOreConfig.BOP[1];
         if (mushrooms != null && "BiomeGenFungiForest".equals(biome)
                 && DeepOreConfig.enabled(mushroomRule) && random.nextDouble() < mushroomRule.chance) {
@@ -169,6 +172,35 @@ public final class BopIntegration {
                     terrain[index] = mossId | (metadata << 16);
                     placed++;
                 }
+            }
+        }
+    }
+
+    private static void generateMinersDelight(World world, Random random, int[] terrain,
+                                              int stone, int deepslate, int chunkX, int chunkZ) {
+        DeepOreConfig.Rule rule = DeepOreConfig.BOP[3];
+        if (flowers2 == null || !DeepOreConfig.enabled(rule) || random.nextDouble() >= rule.chance) return;
+        int flower = Block.getIdFromBlock(flowers2) | (6 << 16);
+        for (int patch = 0; patch < DeepOreConfig.attempts(rule, random); patch++) {
+            int centerX = random.nextInt(16), centerZ = random.nextInt(16);
+            int centerY = rule.minY + random.nextInt(rule.maxY - rule.minY + 1);
+            for (int attempt = 0; attempt < rule.size; attempt++) {
+                int x = centerX + random.nextInt(8) - random.nextInt(8);
+                int y = centerY + random.nextInt(4) - random.nextInt(4);
+                int z = centerZ + random.nextInt(8) - random.nextInt(8);
+                if (x < 0 || x >= 16 || z < 0 || z >= 16 || y < -63 || y >= 0) continue;
+                BiomeGenBase biome = world.getWorldChunkManager().getBiomeGenAt(
+                        (chunkX << 4) + x, (chunkZ << 4) + z);
+                if (biome == null) continue;
+                String biomeClass = biome.getClass().getName();
+                if (!biomeClass.startsWith("biomesoplenty.common.biome.overworld.")
+                        && !biomeClass.startsWith("biomesoplenty.common.biome.overridden.")) continue;
+                if (biomeClass.endsWith(".BiomeGenOriginValley")
+                        || biomeClass.endsWith(".BiomeGenBOPHell")) continue;
+                int index = ((y + 64) << 8) | (z << 4) | x;
+                int support = terrain[index - 256] & 65535;
+                if (terrain[index] == 0 && (support == stone || support == deepslate))
+                    terrain[index] = flower;
             }
         }
     }

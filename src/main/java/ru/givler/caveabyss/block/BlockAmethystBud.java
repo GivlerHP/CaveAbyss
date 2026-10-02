@@ -30,7 +30,7 @@ public final class BlockAmethystBud extends Block {
         super(Material.glass);
         this.stage = stage;
         setBlockName(name);
-        setBlockTextureName("caveabyss:amethyst_cluster");
+        setBlockTextureName("caveabyss:" + name);
         setHardness(1.5F);
         setResistance(1.5F);
         setStepSound(soundTypeGlass);
@@ -40,8 +40,8 @@ public final class BlockAmethystBud extends Block {
     }
 
     private void bounds(int face) {
-        float half = (stage == 0 ? 5 : stage == 1 ? 6 : stage == 2 ? 7 : 8) / 16F;
-        float length = (stage == 0 ? 6 : stage == 1 ? 10 : stage == 2 ? 13 : 16) / 16F;
+        float half = (stage == 0 ? 5 : stage == 1 ? 5 : stage == 2 ? 6 : 8) / 16F;
+        float length = (stage == 0 ? 5 : stage == 1 ? 7 : stage == 2 ? 10 : 15) / 16F;
         float lo = 0.5F - half, hi = 0.5F + half;
         if (face == 0) setBlockBounds(lo, 1 - length, lo, hi, 1, hi);
         else if (face == 1) setBlockBounds(lo, 0, lo, hi, length, hi);

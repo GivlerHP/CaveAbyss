@@ -1,0 +1,10 @@
+{
+  "bubble_column.whirlpool_inside": {
+    "category": "blocks",
+    "sounds": ["bubble_column/whirlpool_inside"]
+  },
+  "bubble_column.whirlpool_ambient": {
+    "category": "blocks",
+    "sounds": ["bubble_column/whirlpool_ambient"]
+  }
+}

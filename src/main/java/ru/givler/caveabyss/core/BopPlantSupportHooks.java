@@ -16,6 +16,10 @@ public final class BopPlantSupportHooks {
                 && world.getBlock(x, y - 1, z) == CaveBlocks.deepslate;
     }
 
+    public static boolean minersDelightPosition(World world, int x, int y, int z, int metadata) {
+        return metadata == 6 && world.getBlock(x, y - 1, z) == CaveBlocks.deepslate;
+    }
+
     public static boolean mossPosition(World world, int x, int y, int z, int side) {
         switch (side) {
             case 1: return world.getBlock(x, y + 1, z) == CaveBlocks.deepslate;

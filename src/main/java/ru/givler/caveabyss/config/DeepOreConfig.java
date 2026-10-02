@@ -9,7 +9,7 @@ public final class DeepOreConfig {
     private static Configuration config;
     public static final Rule[] VANILLA = new Rule[7];
     public static final Rule[] THAUMCRAFT = new Rule[3];
-    public static final Rule[] BOP = new Rule[3];
+    public static final Rule[] BOP = new Rule[4];
     public static final Rule[] MF2 = new Rule[7];
     private static final int OLD_INHERIT = -999;
 
@@ -31,6 +31,7 @@ public final class DeepOreConfig {
         BOP[0] = rule("bop.gems", 6, 1, -32, -1, 1.0);
         BOP[1] = rule("bop.mushrooms", 4, 1, -60, -3, 1.0);
         BOP[2] = rule("bop.moss", 6, 1, -60, -3, 1.0);
+        BOP[3] = rule("bop.minersDelight", 1, 128, -60, -4, 1.0);
         // Separate lower-layer distribution: copper/tin near Y=0, rare mythic at bedrock.
         MF2[0] = rule("mf2.copper", 4, 4, 8, -24, -1, 1.0);
         MF2[1] = rule("mf2.tin", 4, 4, 5, -24, -1, 1.0);
