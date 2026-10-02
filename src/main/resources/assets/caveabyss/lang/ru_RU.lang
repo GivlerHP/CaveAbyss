@@ -50,3 +50,7 @@ tile.magma.name=Магма
 tile.seagrass.name=Морская трава
 tile.tall_seagrass.name=Высокая морская трава
 tile.kelp.name=Ламинария
+tile.small_aquamarine_bud.name=Малый бутон аквамарина
+tile.medium_aquamarine_bud.name=Средний бутон аквамарина
+tile.large_aquamarine_bud.name=Крупный бутон аквамарина
+tile.aquamarine_cluster.name=Аквамариновая друза

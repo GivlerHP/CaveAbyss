@@ -50,3 +50,7 @@ tile.magma.name=Magma Block
 tile.seagrass.name=Seagrass
 tile.tall_seagrass.name=Tall Seagrass
 tile.kelp.name=Kelp
+tile.small_aquamarine_bud.name=Small Aquamarine Bud
+tile.medium_aquamarine_bud.name=Medium Aquamarine Bud
+tile.large_aquamarine_bud.name=Large Aquamarine Bud
+tile.aquamarine_cluster.name=Aquamarine Cluster

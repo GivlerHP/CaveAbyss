@@ -159,13 +159,11 @@ public final class MinusOneLayer {
         int water = Block.getIdFromBlock(Blocks.water);
         int lava = Block.getIdFromBlock(Blocks.lava);
         int baseX = chunk.xPosition << 4, baseZ = chunk.zPosition << 4;
-        boolean changed = false;
         for (int y = MIN_Y; y < 0; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
             int index = index(x, y, z);
             int id = state(layer, index) & 65535;
             if (id != water && id != lava) continue;
-            boolean exposed = x == 0 || x == 15 || z == 0 || z == 15
-                    || y == -1 && chunk.getBlock(x, 0, z) == Blocks.air
+            boolean exposed = y == -1 && chunk.getBlock(x, 0, z) == Blocks.air
                     || y < -1 && (state(layer, index + 256) & 65535) == 0
                     || y > MIN_Y && (state(layer, index - 256) & 65535) == 0
                     || x > 0 && (state(layer, index - 1) & 65535) == 0
@@ -173,12 +171,9 @@ public final class MinusOneLayer {
                     || z > 0 && (state(layer, index - 16) & 65535) == 0
                     || z < 15 && (state(layer, index + 16) & 65535) == 0;
             if (!exposed) continue;
-            Block flowing = id == water ? Blocks.flowing_water : Blocks.flowing_lava;
-            setState(layer, index, Block.getIdFromBlock(flowing));
-            changed = true;
-            world.func_147446_b(baseX + x, y, baseZ + z, flowing, flowing.tickRate(world), 0);
+            Block source = id == water ? Blocks.water : Blocks.lava;
+            world.func_147446_b(baseX + x, y, baseZ + z, source, source.tickRate(world), 0);
         }
-        if (changed) chunk.setChunkModified();
     }
 
     @SubscribeEvent

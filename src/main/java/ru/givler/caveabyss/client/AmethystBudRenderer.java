@@ -6,6 +6,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
+import net.minecraft.init.Blocks;
 import net.minecraft.world.IBlockAccess;
 import org.lwjgl.opengl.GL11;
 import ru.givler.caveabyss.block.BlockAmethystBud;
@@ -40,6 +41,15 @@ public final class AmethystBudRenderer implements ISimpleBlockRenderingHandler {
     @Override
     public boolean renderWorldBlock(IBlockAccess world, int x, int y, int z,
                                     Block block, int modelId, RenderBlocks renderer) {
+        if (((BlockAmethystBud) block).isAquamarine()) {
+            IBlockAccess original = renderer.blockAccess;
+            renderer.blockAccess = new SourceWaterView(original);
+            try {
+                renderer.renderBlockLiquid(Blocks.water, x, y, z);
+            } finally {
+                renderer.blockAccess = original;
+            }
+        }
         Tessellator tess = Tessellator.instance;
         tess.setBrightness(block.getMixedBrightnessForBlock(world, x, y, z));
         tess.setColorOpaque_F(1, 1, 1);

@@ -35,7 +35,10 @@ public final class AquaticPlantRenderer implements ISimpleBlockRenderingHandler 
         } finally {
             renderer.blockAccess = original;
         }
-        drawPlant(Tessellator.instance, block.getIcon(0, world.getBlockMetadata(x, y, z)),
+        int metadata = world.getBlockMetadata(x, y, z);
+        if (block instanceof BlockKelp && world.getBlock(x, y + 1, z) == block)
+            metadata = 10;
+        drawPlant(Tessellator.instance, block.getIcon(0, metadata),
                 x, y, z, block.getMixedBrightnessForBlock(world, x, y, z));
         return true;
     }

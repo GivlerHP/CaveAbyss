@@ -7,6 +7,7 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraftforge.common.util.ForgeDirection;
 import ru.givler.caveabyss.block.CaveBlocks;
+import ru.givler.caveabyss.block.BlockAmethystBud;
 
 /** Present submerged plants as source water only while drawing their water surface. */
 final class SourceWaterView implements IBlockAccess {
@@ -17,7 +18,8 @@ final class SourceWaterView implements IBlockAccess {
     private boolean plant(int x, int y, int z) {
         Block block = world.getBlock(x, y, z);
         return block == CaveBlocks.seagrass || block == CaveBlocks.tallSeagrass
-                || block == CaveBlocks.kelp;
+                || block == CaveBlocks.kelp || block instanceof BlockAmethystBud
+                && ((BlockAmethystBud) block).isAquamarine();
     }
 
     @Override public Block getBlock(int x, int y, int z) {

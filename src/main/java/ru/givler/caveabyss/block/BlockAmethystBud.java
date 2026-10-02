@@ -6,17 +6,19 @@ import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
 /** Metadata 0..5 is the outward-facing side, as in vanilla's six directions. */
-public final class BlockAmethystBud extends Block {
+public class BlockAmethystBud extends Block {
     private static int renderId = -1;
     private static final int[] DX = {0, 0, 0, 0, -1, 1};
     private static final int[] DY = {-1, 1, 0, 0, 0, 0};
     private static final int[] DZ = {0, 0, -1, 1, 0, 0};
     private final int stage;
+    private final boolean aquamarine;
 
     public static void setRenderId(int id) {
         renderId = id;
@@ -26,11 +28,20 @@ public final class BlockAmethystBud extends Block {
         return stage;
     }
 
+    public boolean isAquamarine() {
+        return aquamarine;
+    }
+
     public BlockAmethystBud(String name, int stage) {
-        super(Material.glass);
+        this(name, stage, false);
+    }
+
+    public BlockAmethystBud(String name, int stage, boolean aquamarine) {
+        super(aquamarine ? Material.water : Material.glass);
         this.stage = stage;
+        this.aquamarine = aquamarine;
         setBlockName(name);
-        setBlockTextureName("caveabyss:" + name);
+        setBlockTextureName("caveabyss:" + (aquamarine ? "mf2/" : "") + name);
         setHardness(1.5F);
         setResistance(1.5F);
         setStepSound(soundTypeGlass);
@@ -68,6 +79,9 @@ public final class BlockAmethystBud extends Block {
     public boolean renderAsNormalBlock() { return false; }
 
     @Override
+    public int getRenderBlockPass() { return aquamarine ? 1 : 0; }
+
+    @Override
     public int getRenderType() { return renderId; }
 
     @Override
@@ -77,7 +91,7 @@ public final class BlockAmethystBud extends Block {
 
     private boolean supported(World world, int x, int y, int z, int side) {
         return side >= 0 && side < 6 && world.getBlock(x - DX[side], y - DY[side], z - DZ[side])
-                == CaveBlocks.buddingAmethyst;
+                == (aquamarine ? CaveBlocks.deepslate : CaveBlocks.buddingAmethyst);
     }
 
     @Override
@@ -95,13 +109,21 @@ public final class BlockAmethystBud extends Block {
     public void onNeighborBlockChange(World world, int x, int y, int z, Block neighbor) {
         if (!canBlockStay(world, x, y, z)) {
             dropBlockAsItem(world, x, y, z, world.getBlockMetadata(x, y, z), 0);
-            world.setBlockToAir(x, y, z);
+            if (aquamarine) world.setBlock(x, y, z, Blocks.water, 0, 3);
+            else world.setBlockToAir(x, y, z);
         }
     }
 
     @Override
+    public boolean removedByPlayer(World world, EntityPlayer player, int x, int y, int z,
+                                   boolean willHarvest) {
+        return aquamarine ? world.setBlock(x, y, z, Blocks.water, 0, 3)
+                : super.removedByPlayer(world, player, x, y, z, willHarvest);
+    }
+
+    @Override
     public Item getItemDropped(int metadata, Random random, int fortune) {
-        return stage == 3 ? CaveBlocks.amethystShard : null;
+        return stage == 3 ? shard() : null;
     }
 
     @Override
@@ -122,10 +144,16 @@ public final class BlockAmethystBud extends Block {
             int fortune = net.minecraft.enchantment.EnchantmentHelper.getEnchantmentLevel(
                     net.minecraft.enchantment.Enchantment.fortune.effectId, tool);
             int count = 4 + (fortune > 0 ? randomFortune(world.rand, fortune) : 0);
-            spawnDrop(world, x, y, z, new ItemStack(CaveBlocks.amethystShard, count));
+            Item drop = shard();
+            if (drop != null) spawnDrop(world, x, y, z, new ItemStack(drop, count));
         } else {
             super.harvestBlock(world, player, x, y, z, metadata);
         }
+    }
+
+    private Item shard() {
+        return aquamarine ? cpw.mods.fml.common.registry.GameRegistry.findItem(
+                "minefantasy2", "MF_Com_aquamarine_sharde") : CaveBlocks.amethystShard;
     }
 
     private int randomFortune(Random random, int fortune) {

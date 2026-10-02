@@ -26,6 +26,7 @@ public final class CaveBlocks {
     public static Block smoothBasalt, calcite, amethystBlock, buddingAmethyst;
     public static Block[] amethystBuds = new Block[4];
     public static Block magma, seagrass, tallSeagrass, kelp;
+    public static Block[] aquamarineBuds = new Block[4];
     public static Item amethystShard;
 
     private CaveBlocks() { }
@@ -66,6 +67,13 @@ public final class CaveBlocks {
         GameRegistry.registerBlock(seagrass, ItemBlockSeagrass.class, "seagrass");
         GameRegistry.registerBlock(tallSeagrass, ItemBlockSeagrass.class, "tall_seagrass");
         kelp = register(new BlockKelp(), "kelp");
+        if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2")) {
+            String[] aquamarineStages = {"small_aquamarine_bud", "medium_aquamarine_bud",
+                    "large_aquamarine_bud", "aquamarine_cluster"};
+            for (int i = 0; i < aquamarineStages.length; i++)
+                aquamarineBuds[i] = register(new BlockAmethystBud(aquamarineStages[i], i, true),
+                        aquamarineStages[i]);
+        }
     }
 
     private static Block ore(String name, Block vanilla, int level) {

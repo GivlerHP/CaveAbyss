@@ -8,6 +8,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.MapGenCaves;
 import net.minecraft.world.gen.MapGenRavine;
+import net.minecraft.world.biome.BiomeGenBase;
 import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.data.MinusOneLayer;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
@@ -57,9 +58,13 @@ public final class DeepWorldGenerator {
             }
         }
 
+        boolean ocean = isOcean(world.getBiomeGenForCoords(baseX + 8, baseZ + 8));
         carveVanillaCaves(world, blocks, terrain, chunkX, chunkZ);
-        if (connectCaves) connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
-        fillDeepLiquids(terrain, random);
+        if (connectCaves && !ocean)
+            connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
+        if (!ocean) fillDeepLiquids(terrain, random);
+        OceanCaves.generate(world, seed, chunkX, chunkZ, terrain,
+                connectCaves ? blocks : null);
 
         // Keep common utility ores worth mining in the lower layer, while
         // coal and diamonds remain scarce compared with their upper budget.
@@ -77,6 +82,7 @@ public final class DeepWorldGenerator {
         BopIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
         Mf2Integration.generate(world, random, terrain, deepslate);
         AmethystGeodes.generate(seed, chunkX, chunkZ, terrain);
+        OceanCaves.fillCavities(world, chunkX, chunkZ, terrain);
         return terrain;
     }
 
@@ -253,20 +259,35 @@ public final class DeepWorldGenerator {
             int index = ((y + 64) << 8) | (z << 4) | x;
             if (terrain[index] == 0) terrain[index] = lava;
         }
-        // Small water pools form on existing cave floors, away from the lava level.
+        // A source pool needs a solid basin and a level surface. Isolated floor
+        // sources become waterfalls when the negative sections start ticking.
         if (random.nextInt(3) != 0) return;
         for (int attempt = 0; attempt < 48; attempt++) {
             int x = 3 + random.nextInt(10), z = 3 + random.nextInt(10);
             int y = -43 + random.nextInt(29);
             int index = ((y + 64) << 8) | (z << 4) | x;
             if (terrain[index] != 0 || terrain[index - 256] == 0) continue;
+            boolean basin = true;
+            for (int dx = -3; dx <= 3 && basin; dx++) for (int dz = -3; dz <= 3; dz++) {
+                int site = ((y + 64) << 8) | ((z + dz) << 4) | (x + dx);
+                if (terrain[site - 256] == 0 || (dx * dx + dz * dz > 5 && terrain[site] == 0)) {
+                    basin = false;
+                    break;
+                }
+            }
+            if (!basin) continue;
             for (int dx = -2; dx <= 2; dx++) for (int dz = -2; dz <= 2; dz++) {
                 if (dx * dx + dz * dz > 5) continue;
                 int site = ((y + 64) << 8) | ((z + dz) << 4) | (x + dx);
-                if (terrain[site] == 0 && terrain[site - 256] != 0) terrain[site] = water;
+                if (terrain[site] == 0) terrain[site] = water;
             }
             return;
         }
+    }
+
+    static boolean isOcean(BiomeGenBase biome) {
+        return biome == BiomeGenBase.ocean || biome == BiomeGenBase.deepOcean
+                || biome == BiomeGenBase.frozenOcean;
     }
 
     private static double noise(long seed, double x, double y, double z) {
