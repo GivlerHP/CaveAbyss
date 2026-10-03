@@ -32,6 +32,7 @@ repositories {
 }
 
 dependencies {
+    implementation name: 'geckolib-unofficial-1.7.10-1.0.4-dev'
     implementation name: 'AriamisBOB'
     implementation name: 'MF2-dev'
     implementation name: 'Baubles-1.7.10-1.0.1.10-dev'
@@ -74,6 +75,21 @@ task verifyCoreTransforms(type: JavaExec, dependsOn: testClasses) {
 }
 
 tasks.check.dependsOn('verifyCoreTransforms')
+
+task verifyFractalCaves(type: JavaExec, dependsOn: testClasses) {
+    classpath = sourceSets.test.runtimeClasspath
+    main = 'ru.givler.caveabyss.world.abyss.FractalCavesSmoke'
+}
+
+tasks.check.dependsOn('verifyFractalCaves')
+
+task verifyAbyssTerrain(type: JavaExec, dependsOn: testClasses) {
+    classpath = sourceSets.test.runtimeClasspath
+    main = 'ru.givler.caveabyss.world.abyss.AbyssTerrainSmoke'
+    jvmArgs '-Djava.awt.headless=true'
+}
+
+tasks.check.dependsOn('verifyAbyssTerrain')
 
 processResources {
     duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE

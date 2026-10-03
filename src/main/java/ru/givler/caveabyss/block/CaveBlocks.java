@@ -27,10 +27,15 @@ public final class CaveBlocks {
     public static Block[] amethystBuds = new Block[4];
     public static Block magma, seagrass, tallSeagrass, kelp;
     public static Item amethystShard;
+    public static Block abyssBedrock, abyssMoss, caveFern, caveSpike;
 
     private CaveBlocks() { }
 
     public static void register() {
+        abyssBedrock = register(new BlockAbyssStone("abyss_bedrock", "minecraft:bedrock", 0x8247B5, true), "abyss_bedrock");
+        abyssMoss = register(new BlockAbyssStone("abyss_moss", "minecraft:grass_top", 0x45694B, false), "abyss_moss");
+        caveFern = register(new BlockCaveFern(), "cave_fern");
+        caveSpike = register(new BlockCaveSpike(), "cave_spike");
         deepslate = register(new BlockDeepslate(), "deepslate");
         cobbledDeepslate = decorative("cobbled_deepslate");
         polishedDeepslate = decorative("polished_deepslate");

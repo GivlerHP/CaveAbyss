@@ -361,6 +361,7 @@ public final class MinusOneLayer {
         }
         LAYERS.put(event.getChunk(), layer);
         if (!event.getChunk().worldObj.isRemote
+                && !ru.givler.caveabyss.world.abyss.AbyssDimensions.isAbyss(event.getChunk().worldObj)
                 && event.getChunk().worldObj.provider.dimensionId == 0 && needsMigration(data))
             DeepWorldGenerator.migrateChunk(event.getChunk());
     }

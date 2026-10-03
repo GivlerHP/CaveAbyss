@@ -8,6 +8,7 @@ import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftOreRenderer;
 import ru.givler.caveabyss.client.AmethystBudRenderer;
 import ru.givler.caveabyss.client.AquaticPlantRenderer;
 import ru.givler.caveabyss.client.MagmaBubbleEffects;
+import ru.givler.caveabyss.client.AbyssAtmosphere;
 import cpw.mods.fml.common.FMLCommonHandler;
 
 public class ClientProxy extends CommonProxy {
@@ -22,6 +23,10 @@ public class ClientProxy extends CommonProxy {
 		super.init(event);
 		AmethystBudRenderer.register();
 		AquaticPlantRenderer.register();
+		ru.givler.caveabyss.client.CaveSpikeRenderer.register();
+		AbyssAtmosphere atmosphere = new AbyssAtmosphere();
+		net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(atmosphere);
+		FMLCommonHandler.instance().bus().register(atmosphere);
 		FMLCommonHandler.instance().bus().register(new MagmaBubbleEffects());
 		if (ThaumcraftIntegration.isEnabled()) ThaumcraftOreRenderer.register();
 	}

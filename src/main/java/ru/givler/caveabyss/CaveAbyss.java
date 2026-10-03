@@ -33,6 +33,8 @@ public class CaveAbyss {
 	public void preInit(FMLPreInitializationEvent event) {
 		DeepOreConfig.load(new java.io.File(event.getModConfigurationDirectory(), "caveabyss-ores.cfg"));
 		CaveBlocks.register();
+		ru.givler.caveabyss.world.abyss.AbyssDimensions.init(
+				new java.io.File(event.getModConfigurationDirectory(), "caveabyss-world.cfg"));
 		ThaumcraftIntegration.preInit();
 		BopIntegration.preInit();
 		Mf2Integration.preInit();
@@ -45,7 +47,18 @@ public class CaveAbyss {
 	
 	@EventHandler
 	public void init(FMLInitializationEvent event){
+		ru.givler.caveabyss.world.abyss.AbyssDimensions.installHandshake();
 		proxy.init(event);
+	}
+
+	@EventHandler
+	public void serverStarting(cpw.mods.fml.common.event.FMLServerStartingEvent event) {
+		ru.givler.caveabyss.world.abyss.AbyssDimensions.start(event.getServer());
+	}
+
+	@EventHandler
+	public void serverStopped(cpw.mods.fml.common.event.FMLServerStoppedEvent event) {
+		ru.givler.caveabyss.world.abyss.AbyssDimensions.stop();
 	}
 	
 	@EventHandler

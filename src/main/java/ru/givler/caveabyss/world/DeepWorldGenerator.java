@@ -30,6 +30,7 @@ public final class DeepWorldGenerator {
     private static int[] prepareTerrain(World world, Block[] blocks, int chunkX, int chunkZ,
                                         boolean connectCaves) {
         if (world.provider.dimensionId != 0 || world.isRemote) return null;
+        if (ru.givler.caveabyss.world.abyss.AbyssDimensions.isAbyss(world)) return null;
         for (int i = 0; i < blocks.length; i++)
             if ((i & 255) <= 4 && blocks[i] == Blocks.bedrock) blocks[i] = Blocks.stone;
         Random random = new Random(world.getSeed() ^ ((long) chunkX * 341873128712L)
