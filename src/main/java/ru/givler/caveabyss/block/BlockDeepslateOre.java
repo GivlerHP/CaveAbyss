@@ -1,6 +1,7 @@
 package ru.givler.caveabyss.block;
 
 import java.util.ArrayList;
+import cpw.mods.fml.common.Loader;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockOre;
 import net.minecraft.item.ItemStack;
@@ -18,11 +19,13 @@ public final class BlockDeepslateOre extends BlockOre {
         setHardness(4.5F);
         setResistance(6.0F);
         setStepSound(soundTypeStone);
-        setHarvestLevel("pickaxe", harvestLevel);
+        setHarvestLevel("pickaxe", Loader.isModLoaded("minefantasy2") ? 5 : harvestLevel);
     }
 
     @Override
     public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
+        ArrayList<ItemStack> raw = RawMetalDrops.directDrops(this, metadata);
+        if (raw != null) return raw;
         return DeepOreDrops.replaceSourceBlock(
                 vanillaOre.getDrops(world, x, y, z, metadata, fortune), vanillaOre, this, 0);
     }

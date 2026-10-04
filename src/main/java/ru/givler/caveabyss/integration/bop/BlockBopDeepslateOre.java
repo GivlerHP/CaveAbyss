@@ -1,5 +1,6 @@
 package ru.givler.caveabyss.integration.bop;
 
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ public final class BlockBopDeepslateOre extends Block {
         setStepSound(soundTypeStone);
         setCreativeTab(CreativeTabs.tabBlock);
         for (int metadata = 0; metadata < GEMS.length; metadata++)
-            setHarvestLevel("pickaxe", 2, metadata);
+            setHarvestLevel("pickaxe", Loader.isModLoaded("minefantasy2") ? 5 : 2, metadata);
     }
 
     @Override

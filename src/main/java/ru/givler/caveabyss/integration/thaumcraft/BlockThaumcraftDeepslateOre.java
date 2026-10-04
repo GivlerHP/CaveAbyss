@@ -1,5 +1,6 @@
 package ru.givler.caveabyss.integration.thaumcraft;
 
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import java.util.ArrayList;
@@ -48,8 +49,13 @@ public final class BlockThaumcraftDeepslateOre extends Block {
         setResistance(6.0F);
         setStepSound(soundTypeStone);
         setCreativeTab(CreativeTabs.tabBlock);
-        setHarvestLevel("pickaxe", 2, 0);
-        setHarvestLevel("pickaxe", 2, 7);
+        if (Loader.isModLoaded("minefantasy2")) {
+            for (int metadata = 0; metadata < 8; metadata++)
+                setHarvestLevel("pickaxe", 5, metadata);
+        } else {
+            setHarvestLevel("pickaxe", 2, 0);
+            setHarvestLevel("pickaxe", 2, 7);
+        }
     }
 
     @Override

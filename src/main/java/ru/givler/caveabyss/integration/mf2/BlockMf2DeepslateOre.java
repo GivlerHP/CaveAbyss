@@ -10,9 +10,12 @@ import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import cpw.mods.fml.common.registry.GameRegistry;
+import net.minecraft.item.Item;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import ru.givler.caveabyss.block.DeepOreDrops;
+import ru.givler.caveabyss.block.RawMetalDrops;
 
 /** A deepslate host for an MF2 ore; MF2 still decides its drops and XP. */
 public final class BlockMf2DeepslateOre extends Block {
@@ -48,6 +51,14 @@ public final class BlockMf2DeepslateOre extends Block {
 
     @Override
     public ArrayList<ItemStack> getDrops(World world, int x, int y, int z, int metadata, int fortune) {
+        if ("oreDeralium".equals(oreName)) {
+            Item shard = GameRegistry.findItem("minefantasy2", "MF_Ore_deralium_shard");
+            ArrayList<ItemStack> drops = new ArrayList<ItemStack>();
+            if (shard != null) drops.add(new ItemStack(shard));
+            return drops;
+        }
+        ArrayList<ItemStack> raw = RawMetalDrops.directDrops(this, metadata);
+        if (raw != null) return raw;
         Block original = Mf2Integration.sourceOre(oreName);
         return original != null ? DeepOreDrops.replaceSourceBlock(
                 original.getDrops(world, x, y, z, 0, fortune), original, this, 0)

@@ -1,6 +1,7 @@
 package ru.givler.caveabyss.block;
 
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.common.Loader;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
@@ -92,7 +93,8 @@ public final class CaveBlocks {
         Block block = new Block(Material.rock) { }
                 .setBlockName(name).setBlockTextureName("caveabyss:" + texture)
                 .setHardness(3.5F).setResistance(6.0F).setStepSound(Block.soundTypeStone);
-        block.setHarvestLevel("pickaxe", 0);
+        block.setHarvestLevel("pickaxe", Loader.isModLoaded("minefantasy2")
+                && name.contains("deepslate") ? 5 : 0);
         return register(block, name);
     }
 

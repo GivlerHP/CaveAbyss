@@ -23,7 +23,8 @@ public final class Mf2Integration {
             new Ore("oreTungsten", "tungsten", 3, 4.0F, 2.5F, NONE),
             new Ore("oreNitre", "nitre", 2, 3.0F, 5.0F, AIR),
             new Ore("oreSulfur", "sulfur", 2, 3.0F, 2.0F, NONE),
-            new Ore("oreMythic", "mythic", 4, 10.0F, 100.0F, BEDROCK)
+            new Ore("oreMythic", "mythic", 4, 10.0F, 100.0F, BEDROCK),
+            new Ore("oreDeralium", "deralium", 4, 8.0F, 20.0F, NONE)
     };
     private static boolean present;
 
@@ -34,7 +35,7 @@ public final class Mf2Integration {
         if (!present) return;
         for (Ore ore : ORES) {
             ore.deep = new BlockMf2DeepslateOre(ore.name, ore.texture,
-                    ore.harvestLevel, ore.hardness, ore.resistance);
+                    "mythic".equals(ore.texture) ? 6 : 5, ore.hardness, ore.resistance);
             GameRegistry.registerBlock(ore.deep, "deepslate_mf2_" + ore.texture + "_ore");
             OreDictionary.registerOre(ore.name, new ItemStack(ore.deep));
         }
@@ -44,7 +45,7 @@ public final class Mf2Integration {
         if (!present) return;
         for (Ore ore : ORES) {
             ore.source = GameRegistry.findBlock("minefantasy2", ore.name);
-            if (ore.source == null)
+            if (ore.source == null && !"oreDeralium".equals(ore.name))
                 LOG.warn("MF2 block {} was not found; its deep ore generation is disabled", ore.name);
         }
     }
@@ -60,29 +61,33 @@ public final class Mf2Integration {
         int bedrock = Block.getIdFromBlock(Blocks.bedrock);
         for (int oreIndex = 0; oreIndex < ORES.length; oreIndex++) {
             Ore ore = ORES[oreIndex];
-            if (ore.source == null) continue;
+            if (ore.source == null && !"oreDeralium".equals(ore.name)) continue;
             DeepOreConfig.Rule rule = DeepOreConfig.MF2[oreIndex];
             if (!DeepOreConfig.enabled(rule) || random.nextDouble() >= rule.chance) continue;
             int count = DeepOreConfig.attempts(rule, random);
-            int normalId = Block.getIdFromBlock(ore.source);
+            int normalId = ore.source == null ? Block.getIdFromBlock(ore.deep) : Block.getIdFromBlock(ore.source);
             int deepId = Block.getIdFromBlock(ore.deep);
             for (int n = 0; n < count; n++) {
                 int x = random.nextInt(16), z = random.nextInt(16);
-                int y = rule.minY + random.nextInt(rule.maxY - rule.minY + 1);
+                int minY = "oreDeralium".equals(ore.name) ? Math.max(-63, rule.minY) : rule.minY;
+                int maxY = "oreDeralium".equals(ore.name) ? Math.min(-33, rule.maxY) : rule.maxY;
+                if (minY > maxY) continue;
+                int y = minY + random.nextInt(maxY - minY + 1);
                 placeVein(random, terrain, stone, deepslate, bedrock, normalId, deepId,
-                        ore.condition, rule.size, x, y, z);
+                        ore.condition, rule.size, x, y, z, "oreDeralium".equals(ore.name) ? -33 : -1,
+                        "oreDeralium".equals(ore.name));
             }
         }
     }
 
     private static void placeVein(Random random, int[] terrain, int stone, int deepslate,
                                   int bedrock, int normalId, int deepId, int condition,
-                                  int size, int x, int y, int z) {
+                                  int size, int x, int y, int z, int maxY, boolean onlyDeepslate) {
         for (int i = 0; i < size; i++) {
-            if (x >= 0 && x < 16 && z >= 0 && z < 16 && y >= -63 && y < 0) {
+            if (x >= 0 && x < 16 && z >= 0 && z < 16 && y >= -63 && y <= maxY) {
                 int index = ((y + 64) << 8) | (z << 4) | x;
                 int host = terrain[index];
-                if ((host == stone || host == deepslate)
+                if ((host == deepslate || (!onlyDeepslate && host == stone))
                         && (condition == NONE || adjacent(terrain, x, y, z,
                                 condition == BEDROCK ? bedrock : 0))) {
                     terrain[index] = host == stone ? normalId : deepId;

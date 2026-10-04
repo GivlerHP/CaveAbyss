@@ -257,7 +257,7 @@ public final class MinusOneLayer {
         if (!valid(x, y, z) || !world.getChunkProvider().chunkExists(x >> 4, z >> 4)
                 || (state & 65535) > 4095) return;
         setState(layer(world, x, z), index(x, y, z), state);
-        world.markBlockForUpdate(x, y, z);
+        world.markBlockRangeForRenderUpdate(x, y, z, x, y, z);
     }
 
     public static int getLight(World world, EnumSkyBlock type, int x, int y, int z) {

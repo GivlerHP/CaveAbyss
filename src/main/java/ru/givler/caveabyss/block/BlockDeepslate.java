@@ -1,6 +1,7 @@
 package ru.givler.caveabyss.block;
 
 import java.util.Random;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
@@ -20,7 +21,7 @@ public final class BlockDeepslate extends Block {
         setHardness(3.0F);
         setResistance(6.0F);
         setStepSound(soundTypeStone);
-        setHarvestLevel("pickaxe", 0);
+        setHarvestLevel("pickaxe", Loader.isModLoaded("minefantasy2") ? 5 : 0);
     }
 
     @Override

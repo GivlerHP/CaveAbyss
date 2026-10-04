@@ -143,7 +143,8 @@ public final class MinusOneNetwork {
                                 chunk.setBlockMetadata(x, message.y, z, metadata);
                             else
                                 chunk.func_150807_a(x, message.y, z, block, metadata);
-                            world.markBlockForUpdate(message.x, message.y, message.z);
+                            world.markBlockRangeForRenderUpdate(message.x, message.y, message.z,
+                                    message.x, message.y, message.z);
                             world.func_147451_t(message.x, message.y, message.z);
                         }
                     }

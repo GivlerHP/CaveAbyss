@@ -7,10 +7,11 @@ import net.minecraftforge.common.config.Property;
 /** Generation settings for the negative layer; Y values are absolute world coordinates. */
 public final class DeepOreConfig {
     private static Configuration config;
+    public static boolean rawOreDrops = true;
     public static final Rule[] VANILLA = new Rule[7];
     public static final Rule[] THAUMCRAFT = new Rule[3];
     public static final Rule[] BOP = new Rule[4];
-    public static final Rule[] MF2 = new Rule[7];
+    public static final Rule[] MF2 = new Rule[8];
     private static final int OLD_INHERIT = -999;
 
     private DeepOreConfig() { }
@@ -18,6 +19,9 @@ public final class DeepOreConfig {
     public static void load(File file) {
         config = new Configuration(file);
         config.load();
+        rawOreDrops = config.get("drops", "rawOreItems", true,
+                "Drop one raw metal item per ore block. Disable to drop ore blocks instead.")
+                .getBoolean(true);
         VANILLA[0] = rule("vanilla.coal", 5, 9, -62, -1, 1.0);
         VANILLA[1] = rule("vanilla.iron", 20, 8, -62, -1, 1.0);
         VANILLA[2] = rule("vanilla.gold", 2, 8, -62, -26, 1.0);
@@ -40,6 +44,7 @@ public final class DeepOreConfig {
         MF2[4] = rule("mf2.nitre", 2, 4, 8, -40, -8, 1.0);
         MF2[5] = rule("mf2.sulfur", 3, 6, 4, -60, -32, 1.0);
         MF2[6] = rule("mf2.mythic", 1, 2, 6, -63, -58, 0.05);
+        MF2[7] = rule("mf2.deralium", 1, 2, -62, -33, 0.08);
         config.save();
     }
 

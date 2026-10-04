@@ -9,6 +9,7 @@ import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
 import ru.givler.caveabyss.block.CaveBlocks;
+import ru.givler.caveabyss.block.RawMetalDrops;
 import ru.givler.caveabyss.proxy.CommonProxy;
 import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
@@ -33,12 +34,17 @@ public class CaveAbyss {
 	public void preInit(FMLPreInitializationEvent event) {
 		DeepOreConfig.load(new java.io.File(event.getModConfigurationDirectory(), "caveabyss-ores.cfg"));
 		CaveBlocks.register();
+		RawMetalDrops.registerItems();
+		net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(new RawMetalDrops());
 		ThaumcraftIntegration.preInit();
 		BopIntegration.preInit();
 		Mf2Integration.preInit();
 		if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2"))
 			net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(
 					new ru.givler.caveabyss.integration.mf2.DepletedDeepOreGuard());
+		if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2"))
+			net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(
+					new ru.givler.caveabyss.integration.mf2.DeepHarvestSpeed());
 		MinusOneNetwork.init();
 		proxy.preInit(event);
 	}
@@ -53,6 +59,7 @@ public class CaveAbyss {
 		ThaumcraftIntegration.postInit();
 		BopIntegration.postInit();
 		Mf2Integration.postInit();
+		RawMetalDrops.postInit();
 		if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2"))
 			ru.givler.caveabyss.integration.mf2.Mf2Compatibility.register();
 		proxy.postInit(event);
