@@ -17,6 +17,7 @@ import net.minecraftforge.event.world.ChunkEvent;
 import ru.givler.caveabyss.network.MinusOneNetwork;
 import ru.givler.caveabyss.block.CaveBlocks;
 import ru.givler.caveabyss.world.DeepWorldGenerator;
+import ru.givler.caveabyss.core.NegativeBlockTrace;
 
 /** Four negative sections in the byte/nibble layout used by vanilla chunks. */
 public final class MinusOneLayer {
@@ -128,6 +129,7 @@ public final class MinusOneLayer {
         int previous = state(layer, index);
         if (previous == next) return false;
         setState(layer, index, next);
+        NegativeBlockTrace.mutation(world, x, y, z, previous, next);
         Block oldBlock = Block.getBlockById(previous & 65535);
         if (block.getTickRandomly() || oldBlock != null && oldBlock.getTickRandomly())
             layer.randomTickSections[(y - MIN_Y) >> 4] = 0;
@@ -218,6 +220,12 @@ public final class MinusOneLayer {
         if (section < 0 || section > 3 || ids.length != 4096 || add.length != 2048 || data.length != 2048
                 || !world.getChunkProvider().chunkExists(chunkX, chunkZ)) return;
         Layer layer = layer(world, chunkX << 4, chunkZ << 4);
+        int traceX = NegativeBlockTrace.recentX(), traceY = NegativeBlockTrace.recentY();
+        int traceZ = NegativeBlockTrace.recentZ();
+        boolean trace = (traceX >> 4) == chunkX && (traceZ >> 4) == chunkZ
+                && (traceY + 64) >> 4 == section && NegativeBlockTrace.recent(traceX, traceY, traceZ);
+        if (trace) NegativeBlockTrace.snapshot(world, traceX, traceY, traceZ,
+                state(layer, index(traceX, traceY, traceZ)), false);
         if (replace) {
             layer.ids = layer.add = layer.data = layer.skyLight = layer.blockLight = null;
         }
@@ -225,6 +233,8 @@ public final class MinusOneLayer {
         System.arraycopy(ids, 0, layer.ids, section * 4096, 4096);
         layer.add = applyNibbleSection(layer.add, add, section);
         layer.data = applyNibbleSection(layer.data, data, section);
+        if (trace) NegativeBlockTrace.snapshot(world, traceX, traceY, traceZ,
+                state(layer, index(traceX, traceY, traceZ)), true);
         int baseX = chunkX << 4, baseZ = chunkZ << 4;
         int stoneId = Block.getIdFromBlock(Blocks.stone);
         int deepslateId = Block.getIdFromBlock(CaveBlocks.deepslate);

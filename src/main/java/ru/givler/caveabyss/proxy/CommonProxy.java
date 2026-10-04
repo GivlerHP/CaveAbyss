@@ -14,6 +14,9 @@ public class CommonProxy {
 		MinecraftForge.EVENT_BUS.register(new MinusOneLayer());
 		MinecraftForge.EVENT_BUS.register(new ru.givler.caveabyss.network.MinusOneNetwork());
 		MinecraftForge.EVENT_BUS.register(new VoidDamageGuard());
+		ru.givler.caveabyss.core.NegativeItemTrace itemTrace = new ru.givler.caveabyss.core.NegativeItemTrace();
+		MinecraftForge.EVENT_BUS.register(itemTrace);
+		FMLCommonHandler.instance().bus().register(itemTrace);
 		FMLCommonHandler.instance().bus().register(new ru.givler.caveabyss.handler.MagmaBubbleColumns());
 	}
 	

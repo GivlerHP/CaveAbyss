@@ -20,7 +20,15 @@ public final class CorePatchSmoke {
     public static void main(String[] args) throws Exception {
         check(new WorldMinusOneTransformer(), "net.minecraft.world.World");
         check(new WorldMinusOneTransformer(), "net.minecraft.world.WorldManager");
+        check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.client.C07PacketPlayerDigging");
+        check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.client.C08PacketPlayerBlockPlacement");
+        check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.server.S23PacketBlockChange");
+        check(new NegativeDigTraceTransformer(), "net.minecraft.network.NetHandlerPlayServer");
+        check(new NegativeMiningClientTransformer(), "net.minecraft.client.multiplayer.PlayerControllerMP");
+        check(new NegativeItemTransformer(), "net.minecraft.client.network.NetHandlerPlayClient");
         check(new DeepRandomTickTransformer(), "net.minecraft.world.WorldServer");
+        check(new DeepSpawnTransformer(), "net.minecraft.world.SpawnerAnimals");
+        DeepSpawnSmoke.check();
         check(new ChunkNegativeTransformer(), "net.minecraft.world.chunk.Chunk");
         check(new VoidVisualTransformer(), "net.minecraft.client.renderer.EntityRenderer");
         check(new VoidVisualTransformer(), "net.minecraft.client.multiplayer.WorldClient");
@@ -82,6 +90,23 @@ public final class CorePatchSmoke {
         if (patched == null || patched.length == 0 || patched.length == original.length)
             throw new AssertionError("Class was not patched: " + name);
         new ClassReader(patched);
+        if (name.equals("net.minecraft.world.SpawnerAnimals")) {
+            ClassNode node = new ClassNode();
+            new ClassReader(patched).accept(node, 0);
+            int hooks = 0, coordinateRandomCalls = 0;
+            for (MethodNode method : node.methods) {
+                if (!method.desc.equals("(Lnet/minecraft/world/World;II)Lnet/minecraft/world/ChunkPosition;")) continue;
+                for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
+                    if (!(insn instanceof MethodInsnNode)) continue;
+                    MethodInsnNode call = (MethodInsnNode) insn;
+                    if (call.owner.equals("ru/givler/caveabyss/core/DeepSpawnHooks")
+                            && call.name.equals("randomHeight")) hooks++;
+                    if (call.owner.equals("java/util/Random") && call.name.equals("nextInt")) coordinateRandomCalls++;
+                }
+            }
+            if (hooks != 1 || coordinateRandomCalls != 2)
+                throw new AssertionError("Spawn patch changed horizontal sampling or missed Y");
+        }
         StringWriter verification = new StringWriter();
         CheckClassAdapter.verify(new ClassReader(patched), CorePatchSmoke.class.getClassLoader(), false,
                 new PrintWriter(verification));
@@ -94,6 +119,13 @@ public final class CorePatchSmoke {
             assertHook(node, "(Lnet/minecraft/world/EnumSkyBlock;IIII)V", "chunkSetLight");
             assertHook(node, "(IIII)I", "chunkGetBlockLight");
             assertNegativeBoundary(node, "(IIILnet/minecraft/tileentity/TileEntity;)V");
+        }
+        if (name.equals("net.minecraft.network.play.client.C07PacketPlayerDigging")
+                || name.equals("net.minecraft.network.play.client.C08PacketPlayerBlockPlacement")
+                || name.equals("net.minecraft.network.play.server.S23PacketBlockChange")) {
+            ClassNode node = new ClassNode();
+            new ClassReader(patched).accept(node, 0);
+            assertSignedBlockY(node);
         }
         if (name.equals("net.minecraft.world.World")) {
             ClassNode node = new ClassNode();
@@ -160,6 +192,22 @@ public final class CorePatchSmoke {
             if (minus64 && lowerBranch) return;
         }
         throw new AssertionError("Missing negative tile entity boundary: " + descriptor);
+    }
+
+    private static void assertSignedBlockY(ClassNode node) {
+        boolean read = false, write = false;
+        for (MethodNode method : node.methods) {
+            if (!method.desc.equals("(Lnet/minecraft/network/PacketBuffer;)V")) continue;
+            for (AbstractInsnNode instruction = method.instructions.getFirst(); instruction != null;
+                 instruction = instruction.getNext()) {
+                if (!(instruction instanceof MethodInsnNode)) continue;
+                MethodInsnNode call = (MethodInsnNode) instruction;
+                if (call.name.equals("readShort") && call.desc.equals("()S")) read = true;
+                if (call.name.equals("writeShort")
+                        && call.desc.equals("(I)Lio/netty/buffer/ByteBuf;")) write = true;
+            }
+        }
+        if (!read || !write) throw new AssertionError("Block packet still truncates Y: " + node.name);
     }
 
     private static void assertHook(ClassNode node, String methodDesc, String hook) {

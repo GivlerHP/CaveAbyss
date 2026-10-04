@@ -1,6 +1,7 @@
 package ru.givler.caveabyss.network;
 
 import ru.givler.caveabyss.data.MinusOneLayer;
+import ru.givler.caveabyss.core.NegativeBlockTrace;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.common.network.simpleimpl.IMessage;
@@ -138,6 +139,7 @@ public final class MinusOneNetwork {
                             int x = message.x & 15, z = message.z & 15;
                             Block block = Block.getBlockById(message.state & 65535);
                             if (block == null) block = Blocks.air;
+                            NegativeBlockTrace.delta(world, message.x, message.y, message.z, message.state);
                             int metadata = message.state >>> 16 & 15;
                             if (chunk.getBlock(x, message.y, z) == block)
                                 chunk.setBlockMetadata(x, message.y, z, metadata);
