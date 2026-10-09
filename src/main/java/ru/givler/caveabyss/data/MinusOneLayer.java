@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.EnumSkyBlock;
@@ -181,6 +182,30 @@ public final class MinusOneLayer {
     @SubscribeEvent
     public void onChunkLoad(ChunkEvent.Load event) {
         activateGeneratedLiquids(event.getChunk());
+        reactLoadedLava(event.getChunk());
+    }
+
+    /** Static generated lava does not run BlockLiquid's mixing callback from its scheduled tick. */
+    private static void reactLoadedLava(Chunk chunk) {
+        World world = chunk.worldObj;
+        if (world.isRemote || world.provider.dimensionId != 0) return;
+        Layer data = LAYERS.get(chunk);
+        if (data == null || data.ids == null) return;
+        int lava = Block.getIdFromBlock(Blocks.lava), flowing = Block.getIdFromBlock(Blocks.flowing_lava);
+        int[] dx = {-1, 1, 0, 0, 0}, dy = {0, 0, 0, 0, 1}, dz = {0, 0, -1, 1, 0};
+        for (int y = MIN_Y; y < 0; y++) for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+            int id = state(data, index(x, y, z)) & 65535;
+            if (id != lava && id != flowing) continue;
+            int wx = (chunk.xPosition << 4) + x, wz = (chunk.zPosition << 4) + z;
+            for (int side = 0; side < 5; side++) {
+                int nx = wx + dx[side], ny = y + dy[side], nz = wz + dz[side];
+                if (!world.getChunkProvider().chunkExists(nx >> 4, nz >> 4)) continue;
+                if (world.getBlock(nx, ny, nz).getMaterial() == Material.water) {
+                    Block.getBlockById(id).onNeighborBlockChange(world, wx, y, wz, Blocks.water);
+                    break;
+                }
+            }
+        }
     }
 
     /** Mirrors ExtendedBlockStorage.getNeedsRandomTick without scanning on every tick. */

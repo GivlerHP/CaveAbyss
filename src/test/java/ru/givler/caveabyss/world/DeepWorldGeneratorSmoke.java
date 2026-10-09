@@ -12,6 +12,17 @@ public final class DeepWorldGeneratorSmoke {
     private DeepWorldGeneratorSmoke() { }
 
     public static void check() {
+        net.minecraft.world.biome.BiomeGenBase reef = new net.minecraft.world.biome.BiomeGenBase(241) {};
+        for (String name : new String[] {"Ocean", "Deep Ocean", "FrozenOcean", "Coral Reef", "Kelp Forest"}) {
+            reef.biomeName = name;
+            if (!OceanCaves.isOceanBiome(reef) || !DeepWorldGenerator.isOcean(reef))
+                throw new AssertionError("Ocean generation/fauna classifier disagreement: " + name);
+        }
+        for (String name : new String[] {"Beach", "Tropics", "Mangrove", "River", "Bog"}) {
+            reef.biomeName = name;
+            if (OceanCaves.isOceanBiome(reef)) throw new AssertionError("Non-ocean classified as ocean: " + name);
+        }
+
         Block[] shifted = new Block[65536];
         Block[] upper = new Block[65536];
         int[] lower = new int[16384];
@@ -34,9 +45,54 @@ public final class DeepWorldGeneratorSmoke {
             throw new AssertionError("Vanilla and negative X/Z layout mismatch");
         if (upper[0] != solid)
             throw new AssertionError("Lower cave pass altered vanilla terrain");
+        int wet = 0, magma = 0, adjacentMagma = 0;
+        for (int x = -256; x < 256; x++) for (int z = -256; z < 256; z++) {
+            if (OceanCaves.flooded(12345L, x, z)) wet++;
+            if (OceanCaves.magmaPatch(12345L, x, -30, z)) {
+                magma++;
+                if (OceanCaves.magmaPatch(12345L, x + 1, -30, z)) adjacentMagma++;
+            }
+        }
+        if (wet < 30000 || wet > 220000) throw new AssertionError("Missing dry or flooded regions: " + wet);
+        if (magma == 0 || magma > 262144 / 100 || adjacentMagma < magma / 3)
+            throw new AssertionError("Magma must form rare connected patches: " + magma + "/" + adjacentMagma);
+        checkOceanChambers();
         checkCaveConnection();
         checkMineshaftPlacement();
         System.out.println("Vanilla cave air transfer passed");
+    }
+
+    private static void checkOceanChambers() {
+        boolean[] ocean = new boolean[256];
+        Arrays.fill(ocean, true);
+        int water = 9, rock = 2;
+        int[] terrain = new int[16384];
+        Arrays.fill(terrain, rock);
+        for (int x = 3; x <= 12; x++) for (int z = 3; z <= 12; z++)
+            for (int y = -40; y <= -30; y++) terrain[((y + 64) << 8) | (z << 4) | x] = water;
+        OceanCaves.fillTerrain(12345L, 0, 0, terrain, ocean, water, rock);
+        for (int x = 3; x <= 12; x++) for (int z = 3; z <= 12; z++)
+            for (int y = -40; y <= -30; y++)
+                if (terrain[((y + 64) << 8) | (z << 4) | x] != water)
+                    throw new AssertionError("Large chamber was drained or divided by a dry-region barrier");
+
+        Arrays.fill(terrain, rock);
+        for (int x = 4; x <= 11; x++) for (int z = 4; z <= 11; z++)
+            terrain[((-35 + 64) << 8) | (z << 4) | x] = 0;
+        OceanCaves.fillTerrain(12345L, 0, 0, terrain, ocean, water, rock);
+        if (terrain[((-35 + 64) << 8) | (8 << 4) | 8] != water)
+            throw new AssertionError("Wide vanilla cavity must also fill with water");
+
+        boolean dry = false;
+        for (long seed = 0; seed < 100 && !dry; seed++) {
+            Arrays.fill(terrain, rock);
+            for (int z = 4; z <= 11; z++)
+                terrain[((-35 + 64) << 8) | (z << 4) | 8] = 0;
+            OceanCaves.fillTerrain(seed, 0, 0, terrain, ocean, water, rock);
+            dry = terrain[((-35 + 64) << 8) | (8 << 4) | 8] == 0;
+        }
+        if (!dry) throw new AssertionError("Narrow tunnels cannot remain dry");
+        System.out.println("Flooded broad chambers and optional dry narrow tunnels passed");
     }
 
     private static void checkCaveConnection() {

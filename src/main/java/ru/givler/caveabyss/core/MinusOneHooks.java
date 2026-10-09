@@ -12,6 +12,10 @@ import ru.givler.caveabyss.network.MinusOneNetwork;
 public final class MinusOneHooks {
     private MinusOneHooks() { }
 
+    public static int minimumY(World world) {
+        return world.provider.dimensionId == 0 ? MinusOneLayer.MIN_Y : 0;
+    }
+
     public static Block getBlock(World world, int x, int y, int z) {
         return MinusOneLayer.getBlock(world, x, y, z);
     }

@@ -16,6 +16,8 @@ public final class CaveAbyssCorePlugin implements IFMLLoadingPlugin {
                 "ru.givler.caveabyss.core.NegativeMiningClientTransformer",
                 "ru.givler.caveabyss.core.NegativeItemTransformer",
                 "ru.givler.caveabyss.core.DeepRandomTickTransformer",
+                "ru.givler.caveabyss.core.PistonHeightTransformer",
+                "ru.givler.caveabyss.core.BlockMechanicsHeightTransformer",
                 "ru.givler.caveabyss.core.DeepSpawnTransformer",
                 "ru.givler.caveabyss.core.ChunkNegativeTransformer",
                 "ru.givler.caveabyss.core.VoidVisualTransformer",

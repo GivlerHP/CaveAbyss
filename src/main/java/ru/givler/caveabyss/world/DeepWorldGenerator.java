@@ -15,6 +15,7 @@ import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
 import ru.givler.caveabyss.integration.mf2.Mf2Integration;
 import ru.givler.caveabyss.config.DeepOreConfig;
+import ru.givler.caveabyss.integration.mbo.MboIntegration;
 
 /** Terrain extension called by ChunkProviderGenerate before returning a new chunk. */
 public final class DeepWorldGenerator {
@@ -83,6 +84,7 @@ public final class DeepWorldGenerator {
         Mf2Integration.generate(world, random, terrain, deepslate);
         AmethystGeodes.generate(seed, chunkX, chunkZ, terrain);
         OceanCaves.fillCavities(world, chunkX, chunkZ, terrain);
+        MboIntegration.generate(seed, chunkX, chunkZ, terrain, stone, deepslate);
         return terrain;
     }
 
@@ -286,11 +288,10 @@ public final class DeepWorldGenerator {
     }
 
     static boolean isOcean(BiomeGenBase biome) {
-        return biome == BiomeGenBase.ocean || biome == BiomeGenBase.deepOcean
-                || biome == BiomeGenBase.frozenOcean;
+        return OceanCaves.isOceanBiome(biome);
     }
 
-    private static double noise(long seed, double x, double y, double z) {
+    public static double noise(long seed, double x, double y, double z) {
         int ix = (int) Math.floor(x), iy = (int) Math.floor(y), iz = (int) Math.floor(z);
         double fx = smooth(x - ix), fy = smooth(y - iy), fz = smooth(z - iz);
         double result = 0;

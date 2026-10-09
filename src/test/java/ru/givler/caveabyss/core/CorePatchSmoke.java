@@ -26,9 +26,16 @@ public final class CorePatchSmoke {
         check(new NegativeDigTraceTransformer(), "net.minecraft.network.NetHandlerPlayServer");
         check(new NegativeMiningClientTransformer(), "net.minecraft.client.multiplayer.PlayerControllerMP");
         check(new NegativeItemTransformer(), "net.minecraft.client.network.NetHandlerPlayClient");
+        check(new PistonHeightTransformer(), "net.minecraft.block.BlockPistonBase");
         check(new DeepRandomTickTransformer(), "net.minecraft.world.WorldServer");
         check(new DeepSpawnTransformer(), "net.minecraft.world.SpawnerAnimals");
         DeepSpawnSmoke.check();
+        LoadedChunkTickSmoke.check();
+        RedstoneHeightSmoke.check();
+        check(new BlockMechanicsHeightTransformer(), "net.minecraft.block.BlockFalling");
+        check(new BlockMechanicsHeightTransformer(), "net.minecraft.block.BlockDragonEgg");
+        check(new BlockMechanicsHeightTransformer(), "net.minecraft.tileentity.TileEntityBeacon");
+        check(new BlockMechanicsHeightTransformer(), "net.minecraft.entity.item.EntityFallingBlock");
         check(new ChunkNegativeTransformer(), "net.minecraft.world.chunk.Chunk");
         check(new VoidVisualTransformer(), "net.minecraft.client.renderer.EntityRenderer");
         check(new VoidVisualTransformer(), "net.minecraft.client.multiplayer.WorldClient");
@@ -127,6 +134,23 @@ public final class CorePatchSmoke {
             new ClassReader(patched).accept(node, 0);
             assertSignedBlockY(node);
         }
+        if (name.equals("net.minecraft.block.BlockPistonBase")) {
+            ClassNode node = new ClassNode();
+            new ClassReader(patched).accept(node, 0);
+            int boundaries = 0;
+            for (MethodNode method : node.methods) for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                if (!(instruction instanceof MethodInsnNode)) continue;
+                MethodInsnNode call = (MethodInsnNode)instruction;
+                if (call.owner.equals("ru/givler/caveabyss/core/MinusOneHooks")
+                        && call.name.equals("minimumY")) {
+                    if (!(call.getNext() instanceof JumpInsnNode)
+                            || call.getNext().getOpcode() != Opcodes.IF_ICMPLE)
+                        throw new AssertionError("Piston lower limit comparison changed");
+                    boundaries++;
+                }
+            }
+            if (boundaries != 2) throw new AssertionError("Piston extension and pushing must both use deep height");
+        }
         if (name.equals("net.minecraft.world.World")) {
             ClassNode node = new ClassNode();
             new ClassReader(patched).accept(node, 0);
@@ -136,6 +160,7 @@ public final class CorePatchSmoke {
             ClassNode node = new ClassNode();
             new ClassReader(patched).accept(node, 0);
             boolean found = false;
+            boolean loadedOnly = false;
             for (MethodNode method : node.methods) {
                 if (!method.desc.equals("()V")) continue;
                 for (AbstractInsnNode instruction = method.instructions.getFirst(); instruction != null;
@@ -144,9 +169,12 @@ public final class CorePatchSmoke {
                     MethodInsnNode call = (MethodInsnNode)instruction;
                     if (call.owner.equals("ru/givler/caveabyss/core/DeepRandomTickHooks")
                             && call.name.equals("tickNegativeSections")) found = true;
+                    if (call.owner.equals("ru/givler/caveabyss/core/DeepRandomTickHooks")
+                            && call.name.equals("getTickChunk")) loadedOnly = true;
                 }
             }
             if (!found) throw new AssertionError("WorldServer negative random tick hook missing");
+            if (!loadedOnly) throw new AssertionError("WorldServer required active chunk loading hook missing");
         }
         if (name.equals("net.minecraft.client.renderer.RenderGlobal")) {
             ClassNode node = new ClassNode();

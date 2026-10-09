@@ -15,9 +15,10 @@ import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
 import ru.givler.caveabyss.integration.mf2.Mf2Integration;
 import ru.givler.caveabyss.config.DeepOreConfig;
+import ru.givler.caveabyss.integration.mbo.MboIntegration;
 
 @Mod(modid= CaveAbyss.ID, name= CaveAbyss.NAME, version= CaveAbyss.VERSION,
-        dependencies="after:minefantasy2")
+        dependencies="after:minefantasy2;after:mbo")
 public class CaveAbyss {
 	public static final String ID = "caveabyss";
 	public static final String NAME = "CaveAbyss";
@@ -59,6 +60,7 @@ public class CaveAbyss {
 		ThaumcraftIntegration.postInit();
 		BopIntegration.postInit();
 		Mf2Integration.postInit();
+		MboIntegration.postInit();
 		RawMetalDrops.postInit();
 		if (cpw.mods.fml.common.Loader.isModLoaded("minefantasy2"))
 			ru.givler.caveabyss.integration.mf2.Mf2Compatibility.register();

@@ -92,8 +92,26 @@ public final class DeepRandomTickTransformer implements IClassTransformer, Opcod
                 "(Lnet/minecraft/world/WorldServer;Lnet/minecraft/world/chunk/Chunk;I)I", false));
         code.add(new FieldInsnNode(PUTFIELD, lcgField.owner, lcgField.name, lcgField.desc));
         tick.instructions.insertBefore(insertion, code);
+        guardActiveChunks(tick);
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         node.accept(writer);
         return writer.toByteArray();
+    }
+    private static void guardActiveChunks(MethodNode tick) {
+        int patched = 0;
+        for (AbstractInsnNode instruction = tick.instructions.getFirst(); instruction != null;
+             instruction = instruction.getNext()) {
+            if (!(instruction instanceof MethodInsnNode)) continue;
+            MethodInsnNode call = (MethodInsnNode)instruction;
+            String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
+            if (call.desc.equals("(II)Lnet/minecraft/world/chunk/Chunk;")
+                    && (mapped.equals("getChunkFromChunkCoords") || mapped.equals("func_72964_e")
+                    || call.name.equals("getChunkFromChunkCoords") || call.name.equals("func_72964_e"))) {
+                tick.instructions.set(call, new MethodInsnNode(INVOKESTATIC, HOOK, "getTickChunk",
+                        "(Lnet/minecraft/world/WorldServer;II)Lnet/minecraft/world/chunk/Chunk;", false));
+                patched++;
+            }
+        }
+        if (patched != 1) throw new IllegalStateException("CaveAbyss active chunk load anchor missing");
     }
 }
