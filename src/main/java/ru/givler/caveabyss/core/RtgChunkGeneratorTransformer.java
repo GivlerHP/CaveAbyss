@@ -1,6 +1,7 @@
 package ru.givler.caveabyss.core;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+import cpw.mods.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -37,11 +38,11 @@ public final class RtgChunkGeneratorTransformer implements IClassTransformer, Op
         int patched = 0;
         for (MethodNode method : node.methods) {
             if ((method.name.equals("provideChunk") || method.name.equals("func_73154_d"))
-                    && method.desc.equals("(II)L" + CHUNK + ";")) {
+                    && FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc).equals("(II)L" + CHUNK + ";")) {
                 int blocksSlot = -1;
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (insn.getOpcode() == ANEWARRAY && insn instanceof TypeInsnNode
-                            && ((TypeInsnNode) insn).desc.equals("net/minecraft/block/Block")) {
+                            && FMLDeobfuscatingRemapper.INSTANCE.map(((TypeInsnNode) insn).desc).equals("net/minecraft/block/Block")) {
                         AbstractInsnNode next = insn.getNext();
                         if (next instanceof VarInsnNode && next.getOpcode() == ASTORE)
                             blocksSlot = ((VarInsnNode) next).var;
@@ -52,13 +53,13 @@ public final class RtgChunkGeneratorTransformer implements IClassTransformer, Op
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof MethodInsnNode) || insn.getOpcode() != INVOKESPECIAL) continue;
                     MethodInsnNode call = (MethodInsnNode) insn;
-                    if (!call.owner.equals(CHUNK) || !call.name.equals("<init>")
-                            || !call.desc.equals("(Lnet/minecraft/world/World;[Lnet/minecraft/block/Block;[BII)V")) continue;
+                    if (!FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals(CHUNK) || !call.name.equals("<init>")
+                            || !FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(call.desc).equals("(Lnet/minecraft/world/World;[Lnet/minecraft/block/Block;[BII)V")) continue;
                     // The constructor's arguments are already on the stack. Insert before the NEW,
                     // then attach storage to the new Chunk before RTG publishes it in inGeneration.
                     AbstractInsnNode creation = insn;
                     while (creation != null && (creation.getOpcode() != NEW ||
-                            !((TypeInsnNode) creation).desc.equals(CHUNK))) creation = creation.getPrevious();
+                            !FMLDeobfuscatingRemapper.INSTANCE.map(((TypeInsnNode) creation).desc).equals(CHUNK))) creation = creation.getPrevious();
                     if (creation == null) throw new IllegalStateException("CaveAbyss: RTG chunk allocation missing");
                     InsnList before = new InsnList();
                     before.add(new VarInsnNode(ALOAD, 0));
@@ -87,11 +88,11 @@ public final class RtgChunkGeneratorTransformer implements IClassTransformer, Op
                     break;
                 }
             } else if ((method.name.equals("populate") || method.name.equals("func_73153_a"))
-                    && method.desc.equals("(Lnet/minecraft/world/chunk/IChunkProvider;II)V")) {
+                    && FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc).equals("(Lnet/minecraft/world/chunk/IChunkProvider;II)V")) {
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof MethodInsnNode)) continue;
                     MethodInsnNode call = (MethodInsnNode) insn;
-                    if (!call.owner.equals("net/minecraft/world/gen/structure/MapGenMineshaft")
+                    if (!FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals("net/minecraft/world/gen/structure/MapGenMineshaft")
                             || !call.name.equals("generateStructuresInChunk") && !call.name.equals("func_75051_a")) continue;
                     InsnList code = new InsnList();
                     code.add(new VarInsnNode(ALOAD, 0));

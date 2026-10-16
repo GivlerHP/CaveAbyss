@@ -25,7 +25,8 @@ public final class CaveAbyssCorePlugin implements IFMLLoadingPlugin {
                 "ru.givler.caveabyss.core.DeepChunkGeneratorTransformer",
                 "ru.givler.caveabyss.core.RtgChunkGeneratorTransformer",
                 "ru.givler.caveabyss.core.CauldronBukkitTransformer",
-                "ru.givler.caveabyss.core.BopPlantSupportTransformer"
+                "ru.givler.caveabyss.core.BopPlantSupportTransformer",
+                "ru.givler.caveabyss.core.NeodymiumHeightTransformer"
         };
     }
 

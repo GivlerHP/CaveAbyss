@@ -30,9 +30,22 @@ public final class VoidVisualTransformer implements IClassTransformer, Opcodes {
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof MethodInsnNode)) continue;
                     MethodInsnNode call = (MethodInsnNode)insn;
-                    if (!call.desc.equals("()D") || !call.name.equals("getVoidFogYFactor") && !call.name.equals("func_76565_k")) continue;
-                    AbstractInsnNode store = insn.getNext().getNext();
-                    if (!(store instanceof VarInsnNode) || store.getOpcode() != DSTORE) throw new IllegalStateException("CaveAbyss fog color pattern changed");
+                    String callName = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
+                    if (!call.desc.equals("()D") || !callName.equals("getVoidFogYFactor") && !callName.equals("func_76565_k")) continue;
+                    // OptiFine stores the provider factor before multiplying by camera Y.
+                    // Override the resulting depth term, rather than that intermediate factor.
+                    AbstractInsnNode store = null;
+                    AbstractInsnNode candidate = insn.getNext();
+                    for (int step = 0; candidate != null && step < 48; step++, candidate = candidate.getNext()) {
+                        if (candidate.getOpcode() != DMUL) continue;
+                        AbstractInsnNode next = candidate.getNext();
+                        while (next != null && next.getOpcode() < 0) next = next.getNext();
+                        if (next instanceof VarInsnNode && next.getOpcode() == DSTORE) {
+                            store = next;
+                            break;
+                        }
+                    }
+                    if (store == null) throw new IllegalStateException("CaveAbyss fog color pattern changed");
                     InsnList code = new InsnList();
                     code.add(new InsnNode(DCONST_1));
                     code.add(new VarInsnNode(DSTORE, ((VarInsnNode)store).var));
@@ -44,7 +57,8 @@ public final class VoidVisualTransformer implements IClassTransformer, Opcodes {
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof MethodInsnNode)) continue;
                     MethodInsnNode call = (MethodInsnNode)insn;
-                    if (!call.desc.equals("()Z") || !call.name.equals("getWorldHasVoidParticles") && !call.name.equals("func_76564_j")) continue;
+                    String callName = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
+                    if (!call.desc.equals("()Z") || !callName.equals("getWorldHasVoidParticles") && !callName.equals("func_76564_j")) continue;
                     method.instructions.insertBefore(call, new InsnNode(POP));
                     method.instructions.set(call, new InsnNode(ICONST_0));
                     patched++;
@@ -56,8 +70,9 @@ public final class VoidVisualTransformer implements IClassTransformer, Opcodes {
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof MethodInsnNode)) continue;
                     MethodInsnNode call = (MethodInsnNode) insn;
-                    if (!call.desc.equals("()Z") || !call.name.equals("getWorldHasVoidParticles")
-                            && !call.name.equals("func_76564_j")) continue;
+                    String callName = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
+                    if (!call.desc.equals("()Z") || !callName.equals("getWorldHasVoidParticles")
+                            && !callName.equals("func_76564_j")) continue;
                     method.instructions.insertBefore(call, new InsnNode(POP));
                     method.instructions.set(call, new InsnNode(ICONST_0));
                     patched++;

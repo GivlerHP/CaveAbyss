@@ -17,6 +17,21 @@ public final class MboIntegration {
 
     public static void postInit() {
         tuff = Loader.isModLoaded("mbo") ? GameRegistry.findBlock("mbo", "BlockTuff") : null;
+        registerColoredLightHeight();
+    }
+
+    /** No hard MBO dependency: older MBO versions and standalone CaveAbyss remain usable. */
+    private static void registerColoredLightHeight() {
+        if (!Loader.isModLoaded("mbo")) return;
+        try {
+            Class.forName("ru.givler.mbo.lighting.ColoredLightApi")
+                    .getMethod("registerMinimumY", int.class, int.class)
+                    .invoke(null, 0, ru.givler.caveabyss.data.MinusOneLayer.MIN_Y);
+        } catch (ClassNotFoundException | NoSuchMethodException exception) {
+            cpw.mods.fml.common.FMLLog.warning("[CaveAbyss] Update MBO for RGB lighting below Y=0");
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException("Cannot register CaveAbyss lower layers with MBO lighting", exception);
+        }
     }
 
     private static boolean supportsCrystal(int[] terrain, int x, int y, int z) {

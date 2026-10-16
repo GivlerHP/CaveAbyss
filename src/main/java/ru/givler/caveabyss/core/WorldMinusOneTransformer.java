@@ -34,7 +34,8 @@ public final class WorldMinusOneTransformer implements IClassTransformer, Opcode
             // Descriptors distinguish these World methods even before FML remaps names.
             FMLDeobfuscatingRemapper remapper = FMLDeobfuscatingRemapper.INSTANCE;
             String desc = remapper.mapMethodDesc(method.desc);
-            String mappedName = remapper.mapMethodName("net/minecraft/world/World", method.name, method.desc);
+            // FML keys method mappings by the bytecode owner (obfuscated before remapping).
+            String mappedName = remapper.mapMethodName(node.name, method.name, method.desc);
             if (desc.equals("(III)Lnet/minecraft/block/Block;")) {
                 inject(method, "getBlock", "(Lnet/minecraft/world/World;III)Lnet/minecraft/block/Block;", ARETURN);
                 patched++;

@@ -51,15 +51,15 @@ public final class DeepRandomTickTransformer implements IClassTransformer, Opcod
                 String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(
                         field.owner, field.name, field.desc);
                 if (field.getOpcode() == PUTFIELD && field.desc.equals("I")
-                        && (mapped.equals("updateLCG") || mapped.equals("field_73012_v")
-                        || field.name.equals("updateLCG") || field.name.equals("field_73012_v")))
+                        && (mapped.equals("updateLCG") || mapped.equals("field_73005_l")
+                        || field.name.equals("updateLCG") || field.name.equals("field_73005_l")))
                     lcgField = field;
             }
             if (instruction instanceof MethodInsnNode) {
                 MethodInsnNode call = (MethodInsnNode)instruction;
                 String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(
                         call.owner, call.name, call.desc);
-                if (call.desc.equals("()[Lnet/minecraft/world/chunk/storage/ExtendedBlockStorage;")
+                if (FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(call.desc).equals("()[Lnet/minecraft/world/chunk/storage/ExtendedBlockStorage;")
                         && (mapped.equals("getBlockStorageArray") || mapped.equals("func_76587_i")
                         || call.name.equals("getBlockStorageArray") || call.name.equals("func_76587_i"))) {
                     AbstractInsnNode load = call.getPrevious();
@@ -104,7 +104,7 @@ public final class DeepRandomTickTransformer implements IClassTransformer, Opcod
             if (!(instruction instanceof MethodInsnNode)) continue;
             MethodInsnNode call = (MethodInsnNode)instruction;
             String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
-            if (call.desc.equals("(II)Lnet/minecraft/world/chunk/Chunk;")
+            if (FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(call.desc).equals("(II)Lnet/minecraft/world/chunk/Chunk;")
                     && (mapped.equals("getChunkFromChunkCoords") || mapped.equals("func_72964_e")
                     || call.name.equals("getChunkFromChunkCoords") || call.name.equals("func_72964_e"))) {
                 tick.instructions.set(call, new MethodInsnNode(INVOKESTATIC, HOOK, "getTickChunk",

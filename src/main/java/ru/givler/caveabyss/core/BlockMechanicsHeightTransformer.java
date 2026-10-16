@@ -27,7 +27,8 @@ public final class BlockMechanicsHeightTransformer implements IClassTransformer,
         new ClassReader(bytes).accept(node, 0);
         int count = 0;
         for (MethodNode method : node.methods) {
-            if (falling && method.desc.equals("(Lnet/minecraft/world/World;III)V")) {
+            String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(node.name, method.name, method.desc);
+            if (falling && FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc).equals("(Lnet/minecraft/world/World;III)V")) {
                 for (AbstractInsnNode insn : method.instructions.toArray()) {
                     if (!(insn instanceof JumpInsnNode)) continue;
                     int op = insn.getOpcode();
@@ -41,7 +42,7 @@ public final class BlockMechanicsHeightTransformer implements IClassTransformer,
                     count++;
                 }
             }
-            if (beacon && (method.name.equals("func_146003_y") || method.name.equals("updateBeacon"))
+            if (beacon && (mapped.equals("func_146003_y") || mapped.equals("updateBeacon"))
                     && method.desc.equals("()V")) {
                 for (AbstractInsnNode insn : method.instructions.toArray()) {
                     if (insn.getOpcode() != IFGE || !(insn.getPrevious() instanceof VarInsnNode)
@@ -51,7 +52,7 @@ public final class BlockMechanicsHeightTransformer implements IClassTransformer,
                     count++;
                 }
             }
-            if (entity && (method.name.equals("onUpdate") || method.name.equals("func_70071_h_"))) {
+            if (entity && (mapped.equals("onUpdate") || mapped.equals("func_70071_h_"))) {
                 for (AbstractInsnNode insn : method.instructions.toArray()) {
                     if (insn.getOpcode() != ICONST_1 || !(insn.getNext() instanceof JumpInsnNode)
                             || insn.getNext().getOpcode() != IF_ICMPLT

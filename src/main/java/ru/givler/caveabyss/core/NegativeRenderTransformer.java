@@ -77,22 +77,30 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                 }
                 // The loop's section number (0..19) maps to world Y=-64..255.
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
-                    if (!(insn instanceof MethodInsnNode) || insn.getOpcode() != INVOKESPECIAL) continue;
+                    if (!(insn instanceof MethodInsnNode)) continue;
                     MethodInsnNode call = (MethodInsnNode) insn;
-                    if (!call.owner.equals("net/minecraft/client/renderer/WorldRenderer") || !call.name.equals("<init>")) continue;
+                    boolean constructor = insn.getOpcode() == INVOKESPECIAL
+                            && FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals("net/minecraft/client/renderer/WorldRenderer")
+                            && call.name.equals("<init>");
+                    boolean optifineFactory = insn.getOpcode() == INVOKESTATIC
+                            && call.owner.equals("WrUpdates") && call.name.equals("makeWorldRenderer")
+                            && FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(call.desc).equals(
+                                    "(Lnet/minecraft/world/World;Ljava/util/List;IIII)Lnet/minecraft/client/renderer/WorldRenderer;");
+                    if (!constructor && !optifineFactory) continue;
                     // Constructor stack contains x*16, section*16, z*16. Insert the Y offset after section*16.
                     AbstractInsnNode yScale = null;
+                    int coordinates = 0;
                     AbstractInsnNode previous = insn.getPrevious();
-                    for (int step = 0; step < 20 && previous != null; step++, previous = previous.getPrevious()) {
+                    for (int step = 0; step < 28 && previous != null; step++, previous = previous.getPrevious()) {
                         if (previous.getOpcode() == IMUL && intValue(previous.getPrevious()) == 16
                                 && previous.getPrevious().getPrevious() instanceof VarInsnNode
-                                && previous.getPrevious().getPrevious().getOpcode() == ILOAD
-                                && ((VarInsnNode) previous.getPrevious().getPrevious()).var == 5) {
-                            yScale = previous;
-                            break;
+                                && previous.getPrevious().getPrevious().getOpcode() == ILOAD) {
+                            // Reverse stack order: z, y, x; OptiFine uses different local slots.
+                            if (++coordinates == 2) yScale = previous;
+                            if (coordinates == 3) break;
                         }
                     }
-                    if (yScale == null) throw new IllegalStateException("CaveAbyss WorldRenderer Y pattern changed");
+                    if (yScale == null || coordinates != 3) throw new IllegalStateException("CaveAbyss WorldRenderer Y pattern changed");
                     InsnList offset = new InsnList();
                     offset.add(new IntInsnNode(BIPUSH, -64));
                     offset.add(new InsnNode(IADD));
@@ -194,7 +202,7 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
         int patched = 0;
         for (MethodNode method : node.methods) {
             String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(node.name, method.name, method.desc);
-            if (!method.desc.equals("(FFF)Lnet/minecraft/client/shader/TesselatorVertexState;")
+            if (!FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc).equals("(FFF)Lnet/minecraft/client/shader/TesselatorVertexState;")
                     || !mapped.equals("getVertexState") && !mapped.equals("func_147564_a")) continue;
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (!(insn instanceof MethodInsnNode) || insn.getOpcode() != INVOKESPECIAL) continue;
@@ -207,7 +215,7 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                         FieldInsnNode field = (FieldInsnNode) capacity;
                         String mappedField = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(node.name, field.name, field.desc);
                         if (field.desc.equals("I") && (mappedField.equals("rawBufferIndex")
-                                || mappedField.equals("field_78406_i"))) break;
+                                || mappedField.equals("field_147569_p"))) break;
                     }
                     capacity = capacity.getPrevious();
                 }

@@ -23,6 +23,9 @@ public class ClientProxy extends CommonProxy {
 		AmethystBudRenderer.register();
 		AquaticPlantRenderer.register();
 		FMLCommonHandler.instance().bus().register(new MagmaBubbleEffects());
+		ru.givler.caveabyss.client.ClientNegativeChunkSync chunkSync = new ru.givler.caveabyss.client.ClientNegativeChunkSync();
+		FMLCommonHandler.instance().bus().register(chunkSync);
+		net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(chunkSync);
 		if (ThaumcraftIntegration.isEnabled()) ThaumcraftOreRenderer.register();
 	}
 	

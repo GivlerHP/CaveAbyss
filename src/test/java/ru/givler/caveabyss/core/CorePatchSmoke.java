@@ -18,6 +18,8 @@ import org.objectweb.asm.util.CheckClassAdapter;
 /** Tests core patches against the actual Forge development classes. */
 public final class CorePatchSmoke {
     public static void main(String[] args) throws Exception {
+        ObfuscatedOwnerSmoke.check();
+        DeferredChunkUpdatesSmoke.check();
         check(new WorldMinusOneTransformer(), "net.minecraft.world.World");
         check(new WorldMinusOneTransformer(), "net.minecraft.world.WorldManager");
         check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.client.C07PacketPlayerDigging");

@@ -1,6 +1,7 @@
 package ru.givler.caveabyss.core;
 
 import net.minecraft.launchwrapper.IClassTransformer;
+import cpw.mods.fml.common.asm.transformers.deobf.FMLDeobfuscatingRemapper;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
@@ -20,7 +21,7 @@ public final class PistonHeightTransformer implements IClassTransformer, Opcodes
         new ClassReader(bytes).accept(node, 0);
         int count = 0;
         for (MethodNode method : node.methods) {
-            if (!method.desc.equals("(Lnet/minecraft/world/World;IIII)Z")) continue;
+            if (!FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc).equals("(Lnet/minecraft/world/World;IIII)Z")) continue;
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (!(insn instanceof JumpInsnNode) || insn.getOpcode() != IFLE) continue;
                 AbstractInsnNode previous = insn.getPrevious();

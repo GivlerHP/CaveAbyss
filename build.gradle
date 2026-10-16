@@ -15,7 +15,7 @@ apply plugin: 'idea'
 project.sourceCompatibility = '1.8'
 project.targetCompatibility = '1.8'
 
-version = "1.0.2.45"
+version = "1.0.2.50"
 group = "ru.givler.caveabyss"
 archivesBaseName = "CaveAbyss"
 
@@ -74,6 +74,18 @@ task verifyCoreTransforms(type: JavaExec, dependsOn: testClasses) {
 }
 
 tasks.check.dependsOn('verifyCoreTransforms')
+
+task verifyProductionTransforms(type: JavaExec, dependsOn: testClasses) {
+    classpath = sourceSets.test.runtimeClasspath
+    main = 'ru.givler.caveabyss.core.ProductionTransformSmoke'
+    args new File(gradle.gradleUserHomeDir, 'caches/minecraft/net/minecraftforge/forge/1.7.10-10.13.4.1614-1.7.10').absolutePath
+    if (project.hasProperty('compatMods')) {
+        args project.property('compatMods')
+        args new File(gradle.gradleUserHomeDir, 'caches/minecraft/net/minecraft/minecraft/1.7.10/minecraft-1.7.10.jar').absolutePath
+    }
+}
+
+tasks.check.dependsOn('verifyProductionTransforms')
 
 processResources {
     duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE

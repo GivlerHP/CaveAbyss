@@ -61,8 +61,14 @@ public final class MinusOneNetwork {
     }
 
     public static void broadcast(World world, int x, int y, int z, int state) {
-        CHANNEL.sendToAllAround(new Delta(world.provider.dimensionId, x, y, z, state),
-                new NetworkRegistry.TargetPoint(world.provider.dimensionId, x + 0.5, y + 0.5, z + 0.5, 128));
+        if (!(world instanceof net.minecraft.world.WorldServer)) return;
+        net.minecraft.world.WorldServer server = (net.minecraft.world.WorldServer) world;
+        Delta update = new Delta(world.provider.dimensionId, x, y, z, state);
+        for (Object value : world.playerEntities) {
+            if (value instanceof EntityPlayerMP && server.getPlayerManager()
+                    .isPlayerWatchingChunk((EntityPlayerMP) value, x >> 4, z >> 4))
+                CHANNEL.sendTo(update, (EntityPlayerMP) value);
+        }
     }
 
     /** Tile entities keep their vanilla description packets and chunk NBT. */
@@ -73,8 +79,8 @@ public final class MinusOneNetwork {
         for (Object value : world.playerEntities) {
             if (!(value instanceof EntityPlayerMP)) continue;
             EntityPlayerMP player = (EntityPlayerMP) value;
-            double dx = player.posX - tile.xCoord, dy = player.posY - tile.yCoord, dz = player.posZ - tile.zCoord;
-            if (dx * dx + dy * dy + dz * dz <= 128 * 128)
+            if (world instanceof net.minecraft.world.WorldServer && ((net.minecraft.world.WorldServer) world)
+                    .getPlayerManager().isPlayerWatchingChunk(player, tile.xCoord >> 4, tile.zCoord >> 4))
                 player.playerNetServerHandler.sendPacket(packet);
         }
     }
@@ -105,10 +111,11 @@ public final class MinusOneNetwork {
             @Override public IMessage onMessage(final Snapshot message, MessageContext context) {
                 Minecraft.getMinecraft().func_152344_a(new Runnable() {
                     @Override public void run() {
-                        World world = Minecraft.getMinecraft().theWorld;
+                        final World world = Minecraft.getMinecraft().theWorld;
                         if (world != null && world.provider.dimensionId == message.dimension)
-                            MinusOneLayer.applySection(world, message.chunkX, message.chunkZ, message.section,
-                                    message.replace, message.ids, message.add, message.data);
+                            ru.givler.caveabyss.client.ClientNegativeChunkSync.submit(world, message.chunkX, message.chunkZ,
+                                    () -> MinusOneLayer.applySection(world, message.chunkX, message.chunkZ, message.section,
+                                            message.replace, message.ids, message.add, message.data));
                     }
                 });
                 return null;
@@ -132,22 +139,25 @@ public final class MinusOneNetwork {
             @Override public IMessage onMessage(final Delta message, MessageContext context) {
                 Minecraft.getMinecraft().func_152344_a(new Runnable() {
                     @Override public void run() {
-                        World world = Minecraft.getMinecraft().theWorld;
+                        final World world = Minecraft.getMinecraft().theWorld;
                         if (world != null && world.provider.dimensionId == message.dimension)
                         {
-                            Chunk chunk = world.getChunkFromBlockCoords(message.x, message.z);
-                            int x = message.x & 15, z = message.z & 15;
-                            Block block = Block.getBlockById(message.state & 65535);
-                            if (block == null) block = Blocks.air;
-                            NegativeBlockTrace.delta(world, message.x, message.y, message.z, message.state);
-                            int metadata = message.state >>> 16 & 15;
-                            if (chunk.getBlock(x, message.y, z) == block)
-                                chunk.setBlockMetadata(x, message.y, z, metadata);
-                            else
-                                chunk.func_150807_a(x, message.y, z, block, metadata);
-                            world.markBlockRangeForRenderUpdate(message.x, message.y, message.z,
-                                    message.x, message.y, message.z);
-                            world.func_147451_t(message.x, message.y, message.z);
+                            ru.givler.caveabyss.client.ClientNegativeChunkSync.submit(world, message.x >> 4, message.z >> 4, () -> {
+                                Chunk chunk = world.getChunkFromBlockCoords(message.x, message.z);
+                                int x = message.x & 15, z = message.z & 15;
+                                Block block = Block.getBlockById(message.state & 65535);
+                                if (block == null) block = Blocks.air;
+                                NegativeBlockTrace.delta(world, message.x, message.y, message.z, message.state);
+                                int metadata = message.state >>> 16 & 15;
+                                if (chunk.getBlock(x, message.y, z) == block)
+                                    chunk.setBlockMetadata(x, message.y, z, metadata);
+                                else
+                                    chunk.func_150807_a(x, message.y, z, block, metadata);
+                                world.markBlockRangeForRenderUpdate(message.x - 1, message.y - 1, message.z - 1,
+                                        message.x + 1, message.y + 1, message.z + 1);
+                                world.func_147451_t(message.x, message.y, message.z);
+                                ru.givler.caveabyss.integration.DistantHorizonsBridge.changed(chunk);
+                            });
                         }
                     }
                 });
@@ -177,10 +187,13 @@ public final class MinusOneNetwork {
             @Override public IMessage onMessage(final LightSnapshot message, MessageContext context) {
                 Minecraft.getMinecraft().func_152344_a(new Runnable() {
                     @Override public void run() {
-                        World world = Minecraft.getMinecraft().theWorld;
+                        final World world = Minecraft.getMinecraft().theWorld;
                         if (world == null || world.provider.dimensionId != message.dimension) return;
-                        MinusOneLayer.applyLight(world, message.chunkX, message.chunkZ, EnumSkyBlock.Sky, message.section, message.sky);
-                        MinusOneLayer.applyLight(world, message.chunkX, message.chunkZ, EnumSkyBlock.Block, message.section, message.block);
+                        ru.givler.caveabyss.client.ClientNegativeChunkSync.submit(world, message.chunkX, message.chunkZ, () -> {
+                            MinusOneLayer.applyLight(world, message.chunkX, message.chunkZ, EnumSkyBlock.Sky, message.section, message.sky);
+                            MinusOneLayer.applyLight(world, message.chunkX, message.chunkZ, EnumSkyBlock.Block, message.section, message.block);
+                            ru.givler.caveabyss.integration.DistantHorizonsBridge.changed(world.getChunkFromChunkCoords(message.chunkX, message.chunkZ));
+                        });
                     }
                 });
                 return null;

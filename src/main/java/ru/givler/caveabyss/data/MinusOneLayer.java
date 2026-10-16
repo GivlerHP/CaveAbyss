@@ -37,12 +37,14 @@ public final class MinusOneLayer {
     }
 
     private static Layer layer(Chunk chunk) {
-        Layer result = LAYERS.get(chunk);
-        if (result == null) {
-            result = new Layer();
-            LAYERS.put(chunk, result);
+        synchronized (LAYERS) {
+            Layer result = LAYERS.get(chunk);
+            if (result == null) {
+                result = new Layer();
+                LAYERS.put(chunk, result);
+            }
+            return result;
         }
-        return result;
     }
 
     private static int index(int x, int y, int z) {
@@ -72,6 +74,7 @@ public final class MinusOneLayer {
     }
 
     private static void setState(Layer layer, int index, int state) {
+        layer.nonEmptySections[index >> 12] = 0;
         int id = state & 65535;
         if (id > 4095) throw new IllegalArgumentException("Block ID exceeds 1.7.10 range: " + id);
         if (layer.ids == null) {
@@ -253,9 +256,12 @@ public final class MinusOneLayer {
                 state(layer, index(traceX, traceY, traceZ)), false);
         if (replace) {
             layer.ids = layer.add = layer.data = layer.skyLight = layer.blockLight = null;
+            layer.receivedSections = 0;
+            Arrays.fill(layer.nonEmptySections, (byte) 0);
         }
         if (layer.ids == null) layer.ids = new byte[SIZE];
         System.arraycopy(ids, 0, layer.ids, section * 4096, 4096);
+        layer.nonEmptySections[section] = 0;
         layer.add = applyNibbleSection(layer.add, add, section);
         layer.data = applyNibbleSection(layer.data, data, section);
         if (trace) NegativeBlockTrace.snapshot(world, traceX, traceY, traceZ,
@@ -272,8 +278,30 @@ public final class MinusOneLayer {
             if (block != null && block.hasTileEntity(state >>> 16 & 15))
                 world.getTileEntity(baseX + x, y, baseZ + z);
         }
-        world.markBlockRangeForRenderUpdate(chunkX << 4, MIN_Y + section * 16, chunkZ << 4,
-                (chunkX << 4) + 15, MIN_Y + section * 16 + 15, (chunkZ << 4) + 15);
+        layer.receivedSections |= 1 << section;
+        world.markBlockRangeForRenderUpdate((chunkX << 4) - 1, MIN_Y + section * 16 - 1, (chunkZ << 4) - 1,
+                (chunkX << 4) + 16, MIN_Y + section * 16 + 16, (chunkZ << 4) + 16);
+        if (layer.receivedSections == 15)
+            ru.givler.caveabyss.integration.DistantHorizonsBridge.changed(world.getChunkFromChunkCoords(chunkX, chunkZ));
+    }
+
+    public static boolean isClientChunkReady(Chunk chunk) {
+        if (!chunk.worldObj.isRemote || chunk.worldObj.provider.dimensionId != 0) return true;
+        Layer layer = LAYERS.get(chunk);
+        return layer != null && layer.receivedSections == 15;
+    }
+
+    public static boolean hasBlocksInSection(Chunk chunk, int section) {
+        if (section < 0 || section > 3) return false;
+        Layer layer = LAYERS.get(chunk);
+        if (layer == null || layer.ids == null) return false;
+        if (layer.nonEmptySections[section] == 0) {
+            byte found = 1;
+            for (int i = section * 4096; i < (section + 1) * 4096; i++)
+                if ((state(layer, i) & 65535) != 0) { found = 2; break; }
+            layer.nonEmptySections[section] = found;
+        }
+        return layer.nonEmptySections[section] == 2;
     }
 
     private static byte[] applyNibbleSection(byte[] destination, byte[] source, int section) {
@@ -343,8 +371,8 @@ public final class MinusOneLayer {
         Layer layer = layer(world, chunkX << 4, chunkZ << 4);
         if (type == EnumSkyBlock.Sky) layer.skyLight = applyNibbleSection(layer.skyLight, data, section);
         else layer.blockLight = applyNibbleSection(layer.blockLight, data, section);
-        world.markBlockRangeForRenderUpdate(chunkX << 4, MIN_Y + section * 16, chunkZ << 4,
-                (chunkX << 4) + 15, MIN_Y + section * 16 + 15, (chunkZ << 4) + 15);
+        world.markBlockRangeForRenderUpdate((chunkX << 4) - 1, MIN_Y + section * 16 - 1, (chunkZ << 4) - 1,
+                (chunkX << 4) + 16, MIN_Y + section * 16 + 16, (chunkZ << 4) + 16);
     }
 
     private static void readLegacyEntries(Layer layer, int[] entries) {
@@ -428,6 +456,8 @@ public final class MinusOneLayer {
     }
 
     private static final class Layer {
+        private volatile int receivedSections;
+        private final byte[] nonEmptySections = new byte[4];
         private byte[] ids;
         private byte[] add;
         private byte[] data;

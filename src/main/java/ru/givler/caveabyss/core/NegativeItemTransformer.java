@@ -26,7 +26,7 @@ public final class NegativeItemTransformer implements IClassTransformer, Opcodes
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (!(insn instanceof MethodInsnNode)) continue;
                 MethodInsnNode call = (MethodInsnNode) insn;
-                if (!call.owner.equals("net/minecraft/entity/Entity")
+                if (!FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals("net/minecraft/entity/Entity")
                         || !call.desc.equals("(DDDFFI)V")) continue;
                 String mapped = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
                 if (!mapped.equals("setPositionAndRotation2") && !mapped.equals("func_70056_a")) continue;

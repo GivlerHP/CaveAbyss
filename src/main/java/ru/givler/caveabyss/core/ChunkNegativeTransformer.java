@@ -30,7 +30,7 @@ public final class ChunkNegativeTransformer implements IClassTransformer, Opcode
         for (MethodNode method : node.methods) {
             FMLDeobfuscatingRemapper remapper = FMLDeobfuscatingRemapper.INSTANCE;
             String desc = remapper.mapMethodDesc(method.desc);
-            String mapped = remapper.mapMethodName("net/minecraft/world/chunk/Chunk", method.name, method.desc);
+            String mapped = remapper.mapMethodName(node.name, method.name, method.desc);
             if (desc.equals("(III)Lnet/minecraft/block/Block;")) {
                 inject(method, "chunkGetBlock", "(Lnet/minecraft/world/chunk/Chunk;III)Lnet/minecraft/block/Block;", ARETURN, false);
                 patched++;
@@ -119,7 +119,7 @@ public final class ChunkNegativeTransformer implements IClassTransformer, Opcode
         for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
             if (!(insn instanceof MethodInsnNode)) continue;
             MethodInsnNode call = (MethodInsnNode) insn;
-            if (!call.owner.equals("net/minecraft/block/Block") || !call.desc.equals("(I)Z")
+            if (!FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals("net/minecraft/block/Block") || !call.desc.equals("(I)Z")
                     || !FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc).equals("hasTileEntity"))
                 continue;
             InsnList code = new InsnList();

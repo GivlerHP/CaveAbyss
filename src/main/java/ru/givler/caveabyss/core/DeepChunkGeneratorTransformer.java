@@ -89,9 +89,11 @@ public final class DeepChunkGeneratorTransformer implements IClassTransformer, O
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof MethodInsnNode)) continue;
                     MethodInsnNode call = (MethodInsnNode) insn;
-                    if (!call.owner.equals("net/minecraft/world/gen/structure/MapGenMineshaft")
+                    if (!FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals("net/minecraft/world/gen/structure/MapGenMineshaft")
                             || !FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc)
-                            .equals("generateStructuresInChunk")) continue;
+                            .equals("generateStructuresInChunk")
+                            && !FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc)
+                            .equals("func_75051_a")) continue;
                     InsnList code = new InsnList();
                     code.add(new VarInsnNode(ALOAD, 0));
                     code.add(new VarInsnNode(ALOAD, 0));
@@ -110,7 +112,7 @@ public final class DeepChunkGeneratorTransformer implements IClassTransformer, O
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (insn instanceof MethodInsnNode) {
                     MethodInsnNode call = (MethodInsnNode) insn;
-                    if (call.owner.equals("net/minecraft/world/gen/structure/MapGenMineshaft")
+                    if (FMLDeobfuscatingRemapper.INSTANCE.map(call.owner).equals("net/minecraft/world/gen/structure/MapGenMineshaft")
                             && FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc)
                             .equals("func_151539_a")) {
                         InsnList code = new InsnList();
@@ -126,7 +128,7 @@ public final class DeepChunkGeneratorTransformer implements IClassTransformer, O
                     }
                 }
                 if (insn.getOpcode() == NEW && insn instanceof TypeInsnNode
-                        && ((TypeInsnNode) insn).desc.equals("net/minecraft/world/chunk/Chunk")) {
+                        && FMLDeobfuscatingRemapper.INSTANCE.map(((TypeInsnNode) insn).desc).equals("net/minecraft/world/chunk/Chunk")) {
                     InsnList code = new InsnList();
                     code.add(new VarInsnNode(ALOAD, 0));
                     code.add(new FieldInsnNode(GETFIELD, node.name, worldField.name, worldField.desc));
@@ -164,8 +166,9 @@ public final class DeepChunkGeneratorTransformer implements IClassTransformer, O
                 if (!(insn instanceof FieldInsnNode) || insn.getOpcode() != GETSTATIC) continue;
                 FieldInsnNode field = (FieldInsnNode) insn;
                 String name = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(field.owner, field.name, field.desc);
-                if (!field.owner.equals("net/minecraft/init/Blocks") ||
-                        !name.equals("cobblestone") && !name.equals("mossy_cobblestone")) continue;
+                if (!FMLDeobfuscatingRemapper.INSTANCE.map(field.owner).equals("net/minecraft/init/Blocks") ||
+                        !name.equals("cobblestone") && !name.equals("mossy_cobblestone")
+                                && !name.equals("field_150347_e") && !name.equals("field_150341_Y")) continue;
                 InsnList context = new InsnList();
                 context.add(new VarInsnNode(ALOAD, 1));
                 context.add(new VarInsnNode(ILOAD, 4));
@@ -189,7 +192,7 @@ public final class DeepChunkGeneratorTransformer implements IClassTransformer, O
                 if (!(insn instanceof FieldInsnNode) || insn.getOpcode() != PUTFIELD) continue;
                 FieldInsnNode field = (FieldInsnNode) insn;
                 String name = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(node.name, field.name, field.desc);
-                if (!name.equals("minY") || insn.getPrevious().getOpcode() != ICONST_1) continue;
+                if ((!name.equals("minY") && !name.equals("field_78895_b")) || insn.getPrevious().getOpcode() != ICONST_1) continue;
                 method.instructions.set(insn.getPrevious(), new IntInsnNode(BIPUSH, -64));
                 patched++;
                 break;
