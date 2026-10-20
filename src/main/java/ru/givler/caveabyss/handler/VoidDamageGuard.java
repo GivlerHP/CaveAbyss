@@ -1,13 +1,12 @@
 package ru.givler.caveabyss.handler;
 
-import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import net.minecraft.util.DamageSource;
-import net.minecraftforge.event.entity.living.LivingHurtEvent;
+import net.minecraft.entity.Entity;
+import ru.givler.caveabyss.core.MinusOneHooks;
 
+/** Natural void threshold only. Explicit outOfWorld damage must never be cancelled here. */
 public final class VoidDamageGuard {
-    @SubscribeEvent
-    public void onHurt(LivingHurtEvent event) {
-        if (event.source == DamageSource.outOfWorld && event.entityLiving.posY >= -128.0D)
-            event.setCanceled(true);
+    private VoidDamageGuard() {}
+    public static double naturalThreshold(Entity entity) {
+        return entity.worldObj==null ? -64D : MinusOneHooks.minimumY(entity.worldObj)-64D;
     }
 }

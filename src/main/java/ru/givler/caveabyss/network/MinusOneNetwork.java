@@ -71,6 +71,20 @@ public final class MinusOneNetwork {
         }
     }
 
+    /** Send changed light even when it becomes all zero (closing a skylight). */
+    public static void broadcastLight(Chunk chunk, int sections) {
+        if (!(chunk.worldObj instanceof net.minecraft.world.WorldServer)) return;
+        net.minecraft.world.WorldServer world=(net.minecraft.world.WorldServer)chunk.worldObj;
+        for(int section=0;section<4;section++)if((sections & (1<<section))!=0) {
+            LightSnapshot update=new LightSnapshot(world.provider.dimensionId,chunk.xPosition,chunk.zPosition,section,
+                MinusOneLayer.copyLightSection(chunk,EnumSkyBlock.Sky,section),
+                MinusOneLayer.copyLightSection(chunk,EnumSkyBlock.Block,section));
+            for(Object value:world.playerEntities)if(value instanceof EntityPlayerMP
+                && world.getPlayerManager().isPlayerWatchingChunk((EntityPlayerMP)value,chunk.xPosition,chunk.zPosition))
+                CHANNEL.sendTo(update,(EntityPlayerMP)value);
+        }
+    }
+
     /** Tile entities keep their vanilla description packets and chunk NBT. */
     public static void broadcastTileEntity(World world, TileEntity tile) {
         if (tile.isInvalid()) return;

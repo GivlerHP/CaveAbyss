@@ -18,6 +18,10 @@ import org.objectweb.asm.util.CheckClassAdapter;
 /** Tests core patches against the actual Forge development classes. */
 public final class CorePatchSmoke {
     public static void main(String[] args) throws Exception {
+        check(new VoidDamageTransformer(), "net.minecraft.entity.Entity");
+        VoidDamageSmoke.check();
+        check(new NegativeSkyTransformer(), "net.minecraft.world.World");
+        NegativeSkySmoke.check();
         MboHeightSmoke.check();
         ObfuscatedOwnerSmoke.check();
         DeferredChunkUpdatesSmoke.check();
@@ -155,7 +159,7 @@ public final class CorePatchSmoke {
             }
             if (boundaries != 2) throw new AssertionError("Piston extension and pushing must both use deep height");
         }
-        if (name.equals("net.minecraft.world.World")) {
+        if (name.equals("net.minecraft.world.World") && transformer instanceof WorldMinusOneTransformer) {
             ClassNode node = new ClassNode();
             new ClassReader(patched).accept(node, 0);
             assertNegativeBoundary(node, "(III)Lnet/minecraft/tileentity/TileEntity;");

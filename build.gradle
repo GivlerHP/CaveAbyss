@@ -15,7 +15,7 @@ apply plugin: 'idea'
 project.sourceCompatibility = '1.8'
 project.targetCompatibility = '1.8'
 
-version = "1.0.2.55"
+version = "1.0.2.57"
 group = "ru.givler.caveabyss"
 archivesBaseName = "CaveAbyss"
 
@@ -121,7 +121,7 @@ task verifyDevDependencies {
     doLast {
         def cp = tasks.runClient.classpath.files
         if (cp.any { it.parentFile?.name == '.dev-dependencies' }) throw new GradleException('Dev JARs must come from libs')
-        ['MoreBeyondOrdinary-1.26.26-deobf.jar', 'MF2-dev.jar', 'angelica-2.2.33-dev.jar', 'gtnhlib-0.11.54-dev.jar'].each { name ->
+        ['MoreBeyondOrdinary-1.26.27-deobf.jar', 'MF2-dev.jar', 'angelica-2.2.33-dev.jar', 'gtnhlib-0.11.54-dev.jar'].each { name ->
             if (cp.count { it.name == name } != 1) throw new GradleException("Missing/duplicate dev dependency: " + name)
         }
         if (cp.any { it.name == 'MoreBeyondOrdinary-1.26.0-deobf.jar' || it.name == 'CodeChickenCore-1.7.10-1.0.7.48-universal.jar' })

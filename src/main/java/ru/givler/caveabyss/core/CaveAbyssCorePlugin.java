@@ -11,6 +11,7 @@ public final class CaveAbyssCorePlugin implements IFMLLoadingPlugin {
     public String[] getASMTransformerClass() {
         return new String[] {
                 "ru.givler.caveabyss.core.MboHeightTransformer",
+                "ru.givler.caveabyss.core.NegativeSkyTransformer",
                 "ru.givler.caveabyss.core.WorldMinusOneTransformer",
                 "ru.givler.caveabyss.core.NegativeBlockPacketTransformer",
                 "ru.givler.caveabyss.core.NegativeDigTraceTransformer",
@@ -21,6 +22,7 @@ public final class CaveAbyssCorePlugin implements IFMLLoadingPlugin {
                 "ru.givler.caveabyss.core.BlockMechanicsHeightTransformer",
                 "ru.givler.caveabyss.core.DeepSpawnTransformer",
                 "ru.givler.caveabyss.core.ChunkNegativeTransformer",
+                "ru.givler.caveabyss.core.VoidDamageTransformer",
                 "ru.givler.caveabyss.core.VoidVisualTransformer",
                 "ru.givler.caveabyss.core.NegativeRenderTransformer",
                 "ru.givler.caveabyss.core.DeepChunkGeneratorTransformer",

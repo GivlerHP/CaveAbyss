@@ -6,14 +6,15 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraftforge.common.MinecraftForge;
 import ru.givler.caveabyss.data.MinusOneLayer;
-import ru.givler.caveabyss.handler.VoidDamageGuard;
 
 public class CommonProxy {
 
 	public void preInit(FMLPreInitializationEvent event) {
+        ru.givler.caveabyss.lighting.NegativeSkyLighting sky = new ru.givler.caveabyss.lighting.NegativeSkyLighting();
+        MinecraftForge.EVENT_BUS.register(sky);
+        FMLCommonHandler.instance().bus().register(sky);
 		MinecraftForge.EVENT_BUS.register(new MinusOneLayer());
 		MinecraftForge.EVENT_BUS.register(new ru.givler.caveabyss.network.MinusOneNetwork());
-		MinecraftForge.EVENT_BUS.register(new VoidDamageGuard());
 		ru.givler.caveabyss.core.NegativeItemTrace itemTrace = new ru.givler.caveabyss.core.NegativeItemTrace();
 		MinecraftForge.EVENT_BUS.register(itemTrace);
 		FMLCommonHandler.instance().bus().register(itemTrace);
