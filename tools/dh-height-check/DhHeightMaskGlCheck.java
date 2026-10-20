@@ -45,6 +45,10 @@ public class DhHeightMaskGlCheck {
         Pbuffer context = new Pbuffer(32, 8, new PixelFormat(), null, null);
         try {
             context.makeCurrent();
+            com.seibel.distanthorizons.common.render.openGl.glObject.GlCapabilities caps =
+                com.seibel.distanthorizons.common.render.openGl.glObject.GlCapabilities.current();
+            if (caps.OpenGL32 != GLContext.getCapabilities().OpenGL32 || caps.OpenGL44 != GLContext.getCapabilities().OpenGL44)
+                throw new AssertionError("LWJGL 2 capability snapshot mismatch");
             String base = args[0] + "/src/main/resources/assets/ariamisdh/shaders/shared/gl/";
             String fragment = new String(Files.readAllBytes(Paths.get(base + "flat_shaded.frag")), StandardCharsets.UTF_8);
             int actual = program(new String(Files.readAllBytes(Paths.get(base + "standard.vert")), StandardCharsets.UTF_8), fragment);
@@ -71,7 +75,7 @@ public class DhHeightMaskGlCheck {
             OptifineVanillaChunkTracker.update(null);
             WorldRenderer[] sections = new WorldRenderer[20];
             for (int i=0;i<20;i++) sections[i]=new WorldRenderer(0,(i-4)*16,0,true);
-            OptifineVanillaChunkTracker.recordVanillaRender(java.util.Arrays.asList(sections));
+
             OptifineVanillaChunkTracker.update(sections);
             for (int i=0;i<20;i++) {
                 int worldY=(i-4)*16;
@@ -81,7 +85,7 @@ public class DhHeightMaskGlCheck {
                 OptifineVanillaChunkTracker.update(sections);
                 draw(p,mask,0,true,true);
                 sections[i]=new WorldRenderer(0,worldY,0,true);
-                OptifineVanillaChunkTracker.recordVanillaRender(java.util.Arrays.asList(sections));
+
                 OptifineVanillaChunkTracker.update(sections);
             }
             sections[0]=new WorldRenderer(0,-64,0,false);

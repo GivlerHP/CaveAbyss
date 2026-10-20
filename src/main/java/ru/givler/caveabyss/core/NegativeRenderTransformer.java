@@ -9,6 +9,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.FieldNode;
+import org.objectweb.asm.tree.FrameNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
@@ -31,7 +32,7 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
         if (bytes == null || !GLOBAL.equals(transformedName) && !CACHE.equals(transformedName)
                 && !TESSELLATOR.equals(transformedName)) return bytes;
         ClassNode node = new ClassNode();
-        new ClassReader(bytes).accept(node, 0);
+        new ClassReader(bytes).accept(node, ClassReader.EXPAND_FRAMES);
         if (GLOBAL.equals(transformedName)) patchGlobal(node);
         else if (CACHE.equals(transformedName)) patchCache(node);
         else patchTessellator(node);
@@ -135,6 +136,37 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                     break;
                 }
             } else if (method.desc.equals("(IIIIII)V") && (mapped.equals("markBlocksForUpdate") || mapped.equals("func_72725_b"))) {
+                // Keep queue insertion conditional, but always invalidate an in-flight worker.
+                // Otherwise packets arriving while needsUpdate is true can commit an old, empty mesh.
+                JumpInsnNode alreadyDirty = null;
+                int invalidations = 0;
+                for (AbstractInsnNode insn : method.instructions.toArray()) {
+                    if (insn instanceof FieldInsnNode && insn.getOpcode() == GETFIELD) {
+                        FieldInsnNode field = (FieldInsnNode) insn;
+                        String fieldName = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(field.owner, field.name, field.desc);
+                        if (fieldName.equals("needsUpdate") || fieldName.equals("field_78939_q")) {
+                            AbstractInsnNode next = insn.getNext();
+                            if (next instanceof JumpInsnNode && next.getOpcode() == IFNE)
+                                alreadyDirty = (JumpInsnNode) next;
+                        }
+                    } else if (insn instanceof MethodInsnNode && alreadyDirty != null) {
+                        MethodInsnNode call = (MethodInsnNode) insn;
+                        String callName = FMLDeobfuscatingRemapper.INSTANCE.mapMethodName(call.owner, call.name, call.desc);
+                        if (!callName.equals("markDirty") && !callName.equals("func_78914_f")) continue;
+                        LabelNode invalidate = new LabelNode();
+                        method.instructions.insertBefore(insn.getPrevious(), invalidate);
+                        AbstractInsnNode frame = alreadyDirty.label.getNext();
+                        while (frame != null && frame.getOpcode() < 0 && !(frame instanceof FrameNode)) frame = frame.getNext();
+                        if (frame instanceof FrameNode) {
+                            FrameNode old = (FrameNode) frame;
+                            method.instructions.insert(invalidate, new FrameNode(F_NEW, old.local.size(), old.local.toArray(), 0, new Object[0]));
+                        }
+                        alreadyDirty.label = invalidate;
+                        invalidations++;
+                        alreadyDirty = null;
+                    }
+                }
+                if (invalidations != 1) throw new IllegalStateException("CaveAbyss worker invalidation pattern changed");
                 for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                     if (!(insn instanceof VarInsnNode) || insn.getOpcode() != ISTORE) continue;
                     int index = ((VarInsnNode) insn).var;

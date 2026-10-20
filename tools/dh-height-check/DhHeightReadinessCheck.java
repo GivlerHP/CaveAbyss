@@ -22,7 +22,7 @@ public class DhHeightReadinessCheck {
             throw new AssertionError("DH chunk extraction does not include the full negative range");
         for (int i = 0; i < 20; i++) renderers[i] = new WorldRenderer(0, (i - 4) * 16, 0, true);
         OptifineVanillaChunkTracker.update(null);
-        OptifineVanillaChunkTracker.recordVanillaRender(Arrays.asList(renderers));
+
         OptifineVanillaChunkTracker.update(renderers);
         if (!OptifineVanillaChunkTracker.isReady(KEY)) throw new AssertionError("Full 20-section column not ready");
         for (int section = -4; section < 16; section++) mask(true, section, "Distinct signed section");
@@ -54,6 +54,25 @@ public class DhHeightReadinessCheck {
         OptifineVanillaChunkTracker.update(bottomOnly);
         mask(true, -4, "Bottom Neodymium mesh lookup");
         mask(false, 0, "Upper GPU mesh cannot make missing renderer ready");
+        // Occlusion/frustum visibility must never resurrect a replacement LOD inside terrain.
+        for (int i = 0; i < 20; i++) {
+            Mesh mesh = new Mesh(); mesh.visible = false;
+            region.chunk.chunkMeshes[i * 2] = mesh;
+            renderers[i] = new WorldRenderer(0, (i - 4) * 16, 0, true);
+            renderers[i].isVisible = false; renderers[i].isInFrustum = false;
+        }
+        OptifineVanillaChunkTracker.update(renderers);
+        OptifineVanillaChunkTracker.update(renderers);
+        for (int section = -4; section < 16; section++) mask(true, section, "Occluded GPU section must still hide its LOD");
+        region.chunk.chunkMeshes[0].gpuStatus = Mesh.GPUStatus.UNSENT;
+        OptifineVanillaChunkTracker.update(renderers);
+        mask(false, -4, "Occluded but not uploaded mesh retains LOD");
+        // Vanilla display lists can be ready without ever being drawn (occlusion query).
+        Neodymium.active = false;
+        OptifineVanillaChunkTracker.update(null);
+        OptifineVanillaChunkTracker.update(renderers);
+        for (int section = -4; section < 16; section++) mask(true, section, "Occluded vanilla section must hide its LOD without a draw call");
+        Neodymium.active = true;
         region.chunk.chunkMeshes[0] = null;
         bottomOnly[0].skipRenderPass[0] = bottomOnly[0].skipRenderPass[1] = true;
         bottomOnly[0].needsUpdate = true;
@@ -67,6 +86,6 @@ public class DhHeightReadinessCheck {
         if (com.seibel.distanthorizons.common.wrappers.chunk.ChunkWrapper.getHeight(
                 Minecraft.getMinecraft().theWorld.chunk) != 256)
             throw new AssertionError("Non-extended chunk span changed");
-        System.out.println("PASS: DH 20-section readiness, deferred snapshots, empty sections, shifted GPU slots and other dimensions");
+        System.out.println("PASS: DH 20-section readiness, deferred snapshots, empty sections, shifted GPU slots, occlusion/frustum readiness and other dimensions");
     }
 }

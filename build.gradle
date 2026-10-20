@@ -15,7 +15,7 @@ apply plugin: 'idea'
 project.sourceCompatibility = '1.8'
 project.targetCompatibility = '1.8'
 
-version = "1.0.2.50"
+version = "1.0.2.55"
 group = "ru.givler.caveabyss"
 archivesBaseName = "CaveAbyss"
 
@@ -32,13 +32,19 @@ repositories {
 }
 
 dependencies {
-    implementation name: 'AriamisBOB'
-    implementation name: 'MF2-dev'
-    implementation name: 'Baubles-1.7.10-1.0.1.10-dev'
-    implementation name: 'Thaumcraft-4-Ariamis-4.2.4.0-deobf'
-    implementation name: 'CodeChickenLib-1.7.10-1.1.3.141-universal'
-    implementation name: 'CodeChickenCore-1.7.10-1.0.7.48-universal'
+    implementation fileTree(dir: 'libs', include: '*.jar')
 }
+
+// Dependencies are MCP-mapped dev JARs in libs. UniMixins must bootstrap first.
+afterEvaluate {
+    tasks.matching { it.name == 'runClient' || it.name == 'run' }.all {
+        classpath = files('libs/AAunimixins-all-1.7.10-0.3.1.jar') + classpath
+        args '--tweakClass', 'org.spongepowered.asm.launch.MixinTweaker'
+        jvmArgs '-noverify'
+        systemProperty 'org.lwjgl.librarypath', file('.dev-dependencies/natives').absolutePath
+    }
+}
+
 
 jar {
     from sourceSets.main.output
@@ -87,6 +93,14 @@ task verifyProductionTransforms(type: JavaExec, dependsOn: testClasses) {
 
 tasks.check.dependsOn('verifyProductionTransforms')
 
+// Explicitly invoked only for the isolated Angelica migration world test.
+task migrationProbeJar(type: Jar, dependsOn: testClasses) {
+    archiveBaseName = 'AngelicaMigrationProbe'
+    archiveVersion = '1'
+    from sourceSets.test.output
+    include '**/AngelicaWorldProbe.class'
+}
+
 processResources {
     duplicatesStrategy = org.gradle.api.file.DuplicatesStrategy.EXCLUDE
     inputs.property "version", project.version
@@ -101,3 +115,19 @@ processResources {
         exclude 'mcmod.info'
     }
 }
+
+// Read-only validation; does not launch Minecraft.
+task verifyDevDependencies {
+    doLast {
+        def cp = tasks.runClient.classpath.files
+        if (cp.any { it.parentFile?.name == '.dev-dependencies' }) throw new GradleException('Dev JARs must come from libs')
+        ['MoreBeyondOrdinary-1.26.26-deobf.jar', 'MF2-dev.jar', 'angelica-2.2.33-dev.jar', 'gtnhlib-0.11.54-dev.jar'].each { name ->
+            if (cp.count { it.name == name } != 1) throw new GradleException("Missing/duplicate dev dependency: " + name)
+        }
+        if (cp.any { it.name == 'MoreBeyondOrdinary-1.26.0-deobf.jar' || it.name == 'CodeChickenCore-1.7.10-1.0.7.48-universal.jar' })
+            throw new GradleException('Old MBO/CodeChickenCore on dev runtime')
+        file('build/dev-dependencies.list').text = cp.collect { it.absolutePath }.join('\n')
+        println 'Dev runtime: current MBO/MF2, Angelica, GTNHLib and UniMixins; old renderer dependencies excluded'
+    }
+}
+tasks.check.dependsOn verifyDevDependencies

@@ -79,7 +79,7 @@ public final class ProductionTransformSmoke {
             int checked = 0;
             IClassTransformer optifine = null;
             URLClassLoader optifineLoader = null;
-            if (args.length > 1) {
+            if (args.length > 1 && new File(args[1], "1.7.10/OptiFine_1.7.10_HD_U_E7.jar").isFile()) {
                 File optifineJar = new File(args[1], "1.7.10/OptiFine_1.7.10_HD_U_E7.jar");
                 optifineLoader = new URLClassLoader(new URL[] {optifineJar.toURI().toURL(), new File(args[2]).toURI().toURL()}, ProductionTransformSmoke.class.getClassLoader());
                 optifine = (IClassTransformer) Class.forName("optifine.OptiFineClassTransformer", true, optifineLoader).getDeclaredConstructor().newInstance();
@@ -143,9 +143,11 @@ public final class ProductionTransformSmoke {
                 "biomesoplenty.common.blocks.BlockBOPMushroom", "biomesoplenty.common.blocks.BlockMoss", "biomesoplenty.common.blocks.BlockBOPFlower2");
         checkMod(new File(directory, "RTG-1.7.10-1.1.1.7.jar"), new RtgChunkGeneratorTransformer(), "rtg.world.gen.ChunkProviderRTG");
         File neodymium = new File(directory, "neodymium-mc1.7.10-0.4.3-unofficial.jar");
-        checkMod(neodymium, new NeodymiumHeightTransformer(), "makamys.neodymium.renderer.NeoChunk", "makamys.neodymium.renderer.NeoRenderer", "makamys.neodymium.renderer.ChunkMesh");
-        NeodymiumHeightSmoke.check(neodymium);
-        NeodymiumVertexSmoke.check(neodymium);
+        if (neodymium.isFile()) {
+            checkMod(neodymium, new NeodymiumHeightTransformer(), "makamys.neodymium.renderer.NeoChunk", "makamys.neodymium.renderer.NeoRenderer", "makamys.neodymium.renderer.ChunkMesh");
+            NeodymiumHeightSmoke.check(neodymium);
+            NeodymiumVertexSmoke.check(neodymium);
+        }
     }
 
     private static void checkMod(File file, IClassTransformer transformer, String... targets) throws Exception {

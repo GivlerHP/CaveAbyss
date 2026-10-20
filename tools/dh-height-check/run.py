@@ -19,6 +19,7 @@ sources += [args.dh_root / ("src/main/java/com/seibel/distanthorizons/" + name) 
     "common/render/openGl/terrain/OptifineVanillaChunkTracker.java",
     "common/render/openGl/terrain/ReadyChunkMask.java",
     "common/wrappers/chunk/CaveAbyssCompat.java",
+    "common/render/openGl/glObject/GlCapabilities.java",
 )]
 commands = [
     [str(args.java_home / "bin/javac.exe"), "-proc:none", "-cp", classpath, "-d", str(output)] + list(map(str, sources)),

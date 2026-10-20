@@ -22,9 +22,32 @@ public final class CompatibilityPatchSmoke implements Opcodes {
     public static void check() {
         checkRtg();
         checkBundledRtg();
+        checkRtgDevRegistration();
         checkBukkit("org.bukkit.craftbukkit.CraftWorld", "getBlockAt", "(III)Ljava/lang/Object;", false);
         checkBukkit("org.bukkit.craftbukkit.CraftChunk", "getBlock", "(III)Ljava/lang/Object;", false);
         checkBukkit("org.bukkit.craftbukkit.block.CraftBlock", "getTypeId", "()I", true);
+    }
+
+    private static void checkRtgDevRegistration() {
+        try (JarFile jar = new JarFile("libs/RTG-1.7.10-1.1.1.7.jar")) {
+            ClassNode node = new ClassNode();
+            try(InputStream in=jar.getInputStream(jar.getJarEntry("rtg/RTG.class"))) {
+                new ClassReader(in).accept(node,0);
+            }
+            int verified=0;
+            for(MethodNode method:node.methods)if(method.name.equals("preInit"))
+                for(AbstractInsnNode i:method.instructions.toArray())if(i instanceof MethodInsnNode) {
+                    MethodInsnNode call=(MethodInsnNode)i;
+                    if(!call.owner.equals("net/minecraft/world/gen/structure/MapGenStructureIO"))continue;
+                    boolean exists=false;
+                    for(java.lang.reflect.Method target:net.minecraft.world.gen.structure.MapGenStructureIO.class.getDeclaredMethods())
+                        if(target.getName().equals(call.name) && org.objectweb.asm.Type.getMethodDescriptor(target).equals(call.desc))exists=true;
+                    if(!exists)throw new AssertionError("RTG dev linkage missing: "+call.name+call.desc);
+                    verified++;
+                }
+            if(verified!=2)throw new AssertionError("Expected both RTG structure registrations");
+            System.out.println("RTG preInit: both structure registration calls resolve against actual dev Minecraft methods");
+        }catch(Exception error){throw new AssertionError("Cannot validate RTG dev linkage",error);}
     }
 
     private static void checkBundledRtg() {

@@ -35,6 +35,8 @@ local.properties
 /eclipse
 /run
 /libs
+/.ref
+/docs
 
 
 # Eclipse Core
@@ -79,3 +81,24 @@ classes/
 
 # Linux
 *~
+
+# Local tested dev dependency snapshot
+/.dev-dependencies/
+/.legacy-libs/
+# Temporary Angelica/MBO migration and live diagnostics
+/tools/mbo-angelica-source/
+/tools/mbo-angelica-tests/
+/tools/deferred-tess-test/
+/tools/burden-compare/
+/tools/patch-mbo-*.py
+/tools/AttachHandLiveState.java
+/tools/Hand*.java
+/tools/Tile*.java
+/tools/Deferred*.java
+/tools/DumpHandBytecode.java
+/tools/AngelicaMigrationCheck.java
+/tools/VerifyAngelica*.java
+/tools/VerifyDeferredTessellator.java
+/tools/inspect-angelica*.py
+/dev-libs-unused/
+/build/
