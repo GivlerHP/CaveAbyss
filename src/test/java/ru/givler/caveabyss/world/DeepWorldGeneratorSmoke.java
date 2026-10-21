@@ -58,6 +58,7 @@ public final class DeepWorldGeneratorSmoke {
             throw new AssertionError("Magma must form rare connected patches: " + magma + "/" + adjacentMagma);
         checkOceanChambers();
         checkCaveConnection();
+        checkMigrationTransition();
         checkMineshaftPlacement();
         System.out.println("Vanilla cave air transfer passed");
     }
@@ -114,6 +115,40 @@ public final class DeepWorldGeneratorSmoke {
             throw new AssertionError("Cave transition did not cross Y=0");
         if (lower[((-5 + 64) << 8) | (8 << 4) | 8] != 7)
             throw new AssertionError("Cave transition exposed bedrock");
+    }
+
+    private static void checkMigrationTransition() {
+        for (Block cave : new Block[] {Blocks.air, Blocks.water}) {
+            if (DeepWorldGenerator.migrationReplacement(Blocks.stone, 0, cave, 8) != cave
+                    || DeepWorldGenerator.migrationReplacement(Blocks.bedrock, 0, cave, 0) != cave)
+                throw new AssertionError("Migrated cave was capped at the old floor");
+            for (Block protectedBlock : new Block[] {Blocks.diamond_ore, Blocks.chest,
+                    Blocks.planks, Blocks.air, Blocks.lava, Blocks.water})
+                if (DeepWorldGenerator.migrationReplacement(protectedBlock, 0, cave, 3) != protectedBlock)
+                    throw new AssertionError("Migration replaced existing blocks");
+            if (DeepWorldGenerator.migrationReplacement(Blocks.stone, 1, cave, 3) != Blocks.stone
+                    || DeepWorldGenerator.migrationReplacement(Blocks.bedrock, 0, cave, 5) != Blocks.bedrock
+                    || DeepWorldGenerator.migrationReplacement(Blocks.stone, 0, cave, 15) != Blocks.stone)
+                throw new AssertionError("Migration exceeded its terrain limits");
+        }
+        if (DeepWorldGenerator.migrationReplacement(Blocks.bedrock, 0, Blocks.stone, 4) != Blocks.stone)
+            throw new AssertionError("Old bedrock floor remained");
+        for (Block old : new Block[] {Blocks.stone, Blocks.bedrock, Blocks.diamond_ore,
+                Blocks.chest, Blocks.planks, Blocks.air, Blocks.water, Blocks.lava}) {
+            for (Block cave : new Block[] {Blocks.air, Blocks.water}) {
+                if (DeepWorldGenerator.migrationReplacement(old, 0, cave, 0, 0) != old)
+                    throw new AssertionError("Preserve mode changed upper terrain");
+                Block legacy = old == Blocks.bedrock ? Blocks.stone : old;
+                if (DeepWorldGenerator.migrationReplacement(old, 0, cave, 0, 1) != legacy)
+                    throw new AssertionError("Bedrock-only mode carved a cave");
+                if (DeepWorldGenerator.migrationReplacement(old, 3, cave, 8, 3) != cave)
+                    throw new AssertionError("Full migration preserved a cave obstruction");
+                if (DeepWorldGenerator.migrationReplacement(old, 0, cave, 15, 3) != old)
+                    throw new AssertionError("Full migration exceeded Y=14");
+            }
+            if (DeepWorldGenerator.migrationReplacement(old, 3, Blocks.stone, 8, 3) != old)
+                throw new AssertionError("Full migration overwrote terrain outside a cave");
+        }
     }
 
     private static void checkMineshaftPlacement() {

@@ -15,6 +15,9 @@ import ru.givler.caveabyss.integration.thaumcraft.ThaumcraftIntegration;
 import ru.givler.caveabyss.integration.bop.BopIntegration;
 import ru.givler.caveabyss.integration.mf2.Mf2Integration;
 import ru.givler.caveabyss.config.DeepOreConfig;
+import ru.givler.caveabyss.config.MigrationConfig;
+import net.minecraft.world.ChunkPosition;
+import net.minecraft.tileentity.TileEntity;
 import ru.givler.caveabyss.integration.mbo.MboIntegration;
 
 /** Terrain extension called by ChunkProviderGenerate before returning a new chunk. */
@@ -95,7 +98,7 @@ public final class DeepWorldGenerator {
         }
     }
 
-    /** Generates only the missing lower layer in an existing saved chunk. */
+    /** Generates the missing lower layer and blends its caves into saved terrain. */
     public static void migrateChunk(Chunk chunk) {
         World world = chunk.worldObj;
         if (world.isRemote || world.provider.dimensionId != 0) return;
@@ -103,20 +106,52 @@ public final class DeepWorldGenerator {
         for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++)
             for (int y = 0; y < 256; y++)
                 upper[((x * 16 + z) << 8) | y] = chunk.getBlock(x, y, z);
-        int[] terrain = prepareTerrain(world, upper, chunk.xPosition, chunk.zPosition, false);
+        int strength = MigrationConfig.strength;
+        if (strength == MigrationConfig.FULL) {
+            // Let the existing carvers cut through ores and structures as well.
+            // Uncarved blocks are restored by migrationReplacement below.
+            for (int column = 0; column < 256; column++) for (int y = 0; y <= 14; y++) {
+                int index = (column << 8) | y;
+                if (upper[index] != Blocks.air && upper[index] != Blocks.water)
+                    upper[index] = Blocks.stone;
+            }
+        }
+        int[] terrain = prepareTerrain(world, upper, chunk.xPosition, chunk.zPosition,
+                strength >= MigrationConfig.SAFE);
         if (terrain == null) return;
         MinusOneLayer.fillGeneratedChunk(chunk, terrain);
-        MinusOneLayer.activateGeneratedLiquids(chunk);
         ExtendedBlockStorage bottom = chunk.getBlockStorageArray()[0];
         if (bottom != null) {
             for (int x = 0; x < 16; x++) for (int z = 0; z < 16; z++)
-                for (int y = 0; y <= 4; y++)
-                    if (bottom.getBlockByExtId(x, y, z) == Blocks.bedrock) {
-                        bottom.func_150818_a(x, y, z, Blocks.stone);
+                for (int y = 0; y <= 14; y++) {
+                    Block old = bottom.getBlockByExtId(x, y, z);
+                    Block replacement = migrationReplacement(old, bottom.getExtBlockMetadata(x, y, z),
+                            upper[((x * 16 + z) << 8) | y], y, strength);
+                    if (replacement != old) {
+                        TileEntity tile = (TileEntity) chunk.chunkTileEntityMap.remove(new ChunkPosition(x, y, z));
+                        if (tile != null) tile.invalidate();
+                        bottom.func_150818_a(x, y, z, replacement);
                         bottom.setExtBlockMetadata(x, y, z, 0);
                     }
+                }
         }
+        chunk.generateSkylightMap();
+        MinusOneLayer.activateGeneratedLiquids(chunk);
         chunk.setChunkModified();
+    }
+
+    static Block migrationReplacement(Block old, int metadata, Block generated, int y) {
+        return migrationReplacement(old, metadata, generated, y, MigrationConfig.SAFE);
+    }
+
+    static Block migrationReplacement(Block old, int metadata, Block generated, int y, int strength) {
+        if (y < 0 || y > 14 || strength == MigrationConfig.PRESERVE) return old;
+        boolean floor = old == Blocks.bedrock && y <= 4;
+        if (strength == MigrationConfig.BEDROCK_ONLY) return floor ? Blocks.stone : old;
+        if (strength != MigrationConfig.FULL && (metadata != 0 || (old != Blocks.stone && !floor)))
+            return old;
+        if (generated == Blocks.air || generated == Blocks.water) return generated;
+        return floor ? Blocks.stone : old;
     }
 
     private static void vein(Random random, int[] terrain, int stone, int deepslate,

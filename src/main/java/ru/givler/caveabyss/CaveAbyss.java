@@ -33,6 +33,7 @@ public class CaveAbyss {
 
 	@EventHandler
 	public void preInit(FMLPreInitializationEvent event) {
+		ru.givler.caveabyss.config.MigrationConfig.load(new java.io.File(event.getModConfigurationDirectory(), "caveabyss.cfg"));
 		DeepOreConfig.load(new java.io.File(event.getModConfigurationDirectory(), "caveabyss-ores.cfg"));
 		CaveBlocks.register();
 		RawMetalDrops.registerItems();
