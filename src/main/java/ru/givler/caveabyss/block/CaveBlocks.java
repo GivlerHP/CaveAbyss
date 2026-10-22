@@ -27,6 +27,7 @@ public final class CaveBlocks {
     public static Block smoothBasalt, calcite, amethystBlock, buddingAmethyst;
     public static Block[] amethystBuds = new Block[4];
     public static Block magma, seagrass, tallSeagrass, kelp;
+    public static Block dripstoneBlock, pointedDripstone;
     public static Block[] aquamarineBuds = new Block[4];
     public static Item amethystShard;
 
@@ -54,6 +55,10 @@ public final class CaveBlocks {
         // deepslate texture while keeping basalt a separate block.
         smoothBasalt = decorative("smooth_basalt", "deepslate");
         calcite = decorative("calcite");
+        dripstoneBlock = decorative("dripstone_block");
+        pointedDripstone = register(new BlockPointedDripstone(), "pointed_dripstone");
+        GameRegistry.addRecipe(new net.minecraft.item.ItemStack(dripstoneBlock),
+                "XX", "XX", 'X', pointedDripstone);
         amethystBlock = decorative("amethyst_block");
         buddingAmethyst = register(new BlockBuddingAmethyst(), "budding_amethyst");
         String[] stages = {"small_amethyst_bud", "medium_amethyst_bud", "large_amethyst_bud", "amethyst_cluster"};

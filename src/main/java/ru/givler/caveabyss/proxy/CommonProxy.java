@@ -14,6 +14,7 @@ public class CommonProxy {
         MinecraftForge.EVENT_BUS.register(sky);
         FMLCommonHandler.instance().bus().register(sky);
 		MinecraftForge.EVENT_BUS.register(new MinusOneLayer());
+		MinecraftForge.EVENT_BUS.register(new ru.givler.caveabyss.handler.DripstoneDamage());
 		MinecraftForge.EVENT_BUS.register(new ru.givler.caveabyss.network.MinusOneNetwork());
 		ru.givler.caveabyss.core.NegativeItemTrace itemTrace = new ru.givler.caveabyss.core.NegativeItemTrace();
 		MinecraftForge.EVENT_BUS.register(itemTrace);
@@ -22,6 +23,9 @@ public class CommonProxy {
 	}
 	
 	public void init(FMLInitializationEvent event) {
+		cpw.mods.fml.common.registry.EntityRegistry.registerModEntity(
+				ru.givler.caveabyss.entity.EntityFallingDripstone.class, "falling_dripstone", 1,
+				ru.givler.caveabyss.CaveAbyss.instance, 64, 1, true);
 	}
 	
 	public void postInit(FMLPostInitializationEvent event) {

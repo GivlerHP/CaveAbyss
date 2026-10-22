@@ -16,6 +16,7 @@ public final class MboIntegration {
     private MboIntegration() { }
 
     public static void postInit() {
+        DripstoneCauldrons.init();
         tuff = Loader.isModLoaded("mbo") ? GameRegistry.findBlock("mbo", "BlockTuff") : null;
         registerColoredLightHeight();
     }

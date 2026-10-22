@@ -61,3 +61,6 @@ tile.small_aquamarine_bud.name=Small Aquamarine Bud
 tile.medium_aquamarine_bud.name=Medium Aquamarine Bud
 tile.large_aquamarine_bud.name=Large Aquamarine Bud
 tile.aquamarine_cluster.name=Aquamarine Cluster
+
+tile.dripstone_block.name=Dripstone Block
+tile.pointed_dripstone.name=Pointed Dripstone

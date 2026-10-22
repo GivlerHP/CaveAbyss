@@ -61,3 +61,6 @@ item.raw_tungsten.name=Неочищенная вольфрамовая руда
 tile.medium_aquamarine_bud.name=Средний бутон аквамарина
 tile.large_aquamarine_bud.name=Крупный бутон аквамарина
 tile.aquamarine_cluster.name=Аквамариновая друза
+
+tile.dripstone_block.name=Натёчный камень
+tile.pointed_dripstone.name=Капельник

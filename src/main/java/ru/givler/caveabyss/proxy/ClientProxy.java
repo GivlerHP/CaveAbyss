@@ -20,7 +20,11 @@ public class ClientProxy extends CommonProxy {
 	@Override
 	public void init(FMLInitializationEvent event) {
 		super.init(event);
+		cpw.mods.fml.client.registry.RenderingRegistry.registerEntityRenderingHandler(
+				ru.givler.caveabyss.entity.EntityFallingDripstone.class,
+				new ru.givler.caveabyss.client.FallingDripstoneRenderer());
 		AmethystBudRenderer.register();
+		ru.givler.caveabyss.client.PointedDripstoneRenderer.register();
 		AquaticPlantRenderer.register();
 		FMLCommonHandler.instance().bus().register(new MagmaBubbleEffects());
 		ru.givler.caveabyss.client.ClientNegativeChunkSync chunkSync = new ru.givler.caveabyss.client.ClientNegativeChunkSync();

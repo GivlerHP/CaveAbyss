@@ -64,11 +64,13 @@ public final class DeepWorldGenerator {
 
         boolean ocean = isOcean(world.getBiomeGenForCoords(baseX + 8, baseZ + 8));
         carveVanillaCaves(world, blocks, terrain, chunkX, chunkZ);
+        MountainCaves.carve(world, chunkX, chunkZ, terrain);
         if (connectCaves && !ocean)
             connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
         if (!ocean) fillDeepLiquids(terrain, random);
         OceanCaves.generate(world, seed, chunkX, chunkZ, terrain,
                 connectCaves ? blocks : null);
+        MountainCaves.line(world, chunkX, chunkZ, terrain);
 
         // Keep common utility ores worth mining in the lower layer, while
         // coal and diamonds remain scarce compared with their upper budget.
@@ -88,6 +90,7 @@ public final class DeepWorldGenerator {
         AmethystGeodes.generate(seed, chunkX, chunkZ, terrain);
         OceanCaves.fillCavities(world, chunkX, chunkZ, terrain);
         MboIntegration.generate(seed, chunkX, chunkZ, terrain, stone, deepslate);
+        MountainCaves.decorate(world, chunkX, chunkZ, terrain);
         return terrain;
     }
 

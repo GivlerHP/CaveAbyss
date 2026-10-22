@@ -59,6 +59,7 @@ public final class DeepWorldGeneratorSmoke {
         checkOceanChambers();
         checkCaveConnection();
         checkMigrationTransition();
+        checkMountainCaves();
         checkMineshaftPlacement();
         System.out.println("Vanilla cave air transfer passed");
     }
@@ -149,6 +150,104 @@ public final class DeepWorldGeneratorSmoke {
             if (DeepWorldGenerator.migrationReplacement(old, 3, Blocks.stone, 8, 3) != old)
                 throw new AssertionError("Full migration overwrote terrain outside a cave");
         }
+    }
+
+    private static void checkMountainCaves() {
+        boolean[] mountain = new boolean[256];
+        Arrays.fill(mountain, true);
+        int air = 0, rock = 1, deep = 2, floor = 7, ore = 10, point = 11;
+        int carved = 0, formations = 0, pillars = 0, lining = 0;
+        for (int cx = -4; cx <= 4; cx++) {
+            int[] terrain = new int[16384];
+            Arrays.fill(terrain, deep);
+            Arrays.fill(terrain, 0, 5 * 256, floor);
+            terrain[(30 << 8) | 17] = ore;
+            int[] original = terrain.clone();
+            MountainCaves.carve(76543L, cx, -2, terrain, new boolean[256], rock, deep);
+            if (!Arrays.equals(original, terrain)) throw new AssertionError("Mountain caves changed another biome");
+            MountainCaves.carve(76543L, cx, -2, terrain, mountain, rock, deep);
+            int[] repeat = original.clone();
+            MountainCaves.carve(76543L, cx, -2, repeat, mountain, rock, deep);
+            if (!Arrays.equals(repeat, terrain)) throw new AssertionError("Mountain cave generation is not deterministic");
+            for (int state : terrain) if (state == air) carved++;
+            for (int z = 0; z < 16; z++) for (int x = 0; x < 16; x++) {
+                if (!MountainCaves.pillar(76543L, cx * 16 + x, -32 + z, 0)) continue;
+                double center = MountainCaves.chamberCenter(76543L, cx * 16 + x, -32 + z);
+                double half = MountainCaves.chamberHalfHeight(76543L, cx * 16 + x, -32 + z);
+                if (half < 2) continue;
+                boolean solid = true;
+                for (int y = (int)Math.ceil(center - half); y <= (int)Math.floor(center + half); y++)
+                    if (terrain[((y + 64) << 8) | (z << 4) | x] == 0) solid = false;
+                if (!solid) throw new AssertionError("Mountain pillar was cut through by its chamber");
+                pillars++;
+            }
+            MountainCaves.line(76543L, cx, -2, terrain, mountain, rock, deep, 12, 13);
+            for (int state : terrain) if (state == 12 || state == 13) lining++;
+            MountainCaves.decorate(76543L, cx, -2, terrain, mountain, rock, deep, 12, 13, point, 9);
+            if (terrain[(30 << 8) | 17] != ore) throw new AssertionError("Mountain generation replaced ore");
+            for (int i = 0; i < 5 * 256; i++)
+                if (terrain[i] != floor) throw new AssertionError("Mountain cave reached bedrock");
+            for (int y = 62; y < 64; y++) for (int column = 0; column < 256; column++)
+                if (terrain[y * 256 + column] != deep && terrain[y * 256 + column] != 12
+                        && terrain[y * 256 + column] != 13)
+                    throw new AssertionError("Mountain cave cut the Y=0 boundary");
+            for (int i = 0; i < terrain.length; i++) if ((terrain[i] & 65535) == point) {
+                formations++;
+                int support = i + ((terrain[i] & (8 << 16)) != 0 ? 256 : -256);
+                if (support < 0 || support >= terrain.length || terrain[support] == 0)
+                    throw new AssertionError("Generated dripstone has no support");
+            }
+        }
+        if (carved < 1000 || formations < 5 || formations > carved / 40 || pillars == 0 || lining < 50)
+            throw new AssertionError("Mountain chambers or formations missing: " + carved + "/" + formations
+                    + ", pillars=" + pillars + ", lining=" + lining);
+        double lowest = Double.MAX_VALUE, highest = -Double.MAX_VALUE;
+        for (int x = -64; x < 64; x++) for (int z = -64; z < 64; z++) {
+            double center = MountainCaves.chamberCenter(76543L, x, z);
+            lowest = Math.min(lowest, center); highest = Math.max(highest, center);
+            if (MountainCaves.chamberHalfHeight(76543L, x, z) > 6.5)
+                throw new AssertionError("Mountain chamber exceeds the new height limit");
+            if (MountainCaves.pillar(76543L, x, z, 0) && !MountainCaves.pillar(76543L, x, z, 1))
+                throw new AssertionError("Pillar waist is wider than its anchors");
+            if (Math.abs(MountainCaves.chamberCenter(76543L, x, z)
+                    - MountainCaves.chamberCenter(76543L, x + 1, z)) > 1.5)
+                throw new AssertionError("Hall floor has an abrupt discontinuity");
+        }
+        if (highest - lowest < 7) throw new AssertionError("Mountain chambers lack height variation");
+        checkMountainLayers();
+        if (MountainCaves.isMountain(net.minecraft.world.biome.BiomeGenBase.ocean)
+                || !MountainCaves.isMountain(net.minecraft.world.biome.BiomeGenBase.extremeHills))
+            throw new AssertionError("Mountain biome classifier failed");
+        System.out.println("Mountain chambers, formations, deterministic generation and terrain boundaries passed");
+    }
+
+    private static void checkMountainLayers() {
+        int separated = 0, tall = 0, passages = 0, samples = 0;
+        for (int x = -256; x < 256; x += 4) for (int z = -256; z < 256; z += 4) {
+            MountainCaves.Profile profile = MountainCaves.profile(76543L, x, z);
+            samples++;
+            int runs = 0, longest = 0, current = 0;
+            for (int y = -51; y <= -3; y++) {
+                boolean chamber = profile.vertical(y) <= 1;
+                if (chamber) {
+                    if (current == 0) runs++;
+                    current++; longest = Math.max(longest, current);
+                } else current = 0;
+                if (!chamber && profile.tunnel(y)) passages++;
+            }
+            if (runs >= 2) separated++;
+            if (longest >= 25) tall++;
+            // Tunnel cross-sections must stay narrow, including at cell borders.
+            if (Double.isFinite(profile.tunnelDistance)) {
+                int height = 0;
+                for (int y = -51; y <= -3; y++) if (profile.tunnel(y)) height++;
+                if (height > 4) throw new AssertionError("Layer connector became a large shaft");
+            }
+        }
+        if (separated < 100 || passages < 20 || tall == 0 || tall > samples / 12)
+            throw new AssertionError("Missing layered caves, narrow passages or rare high halls: "
+                    + separated + "/" + passages + "/" + tall);
+        System.out.println("Separated mountain tiers, narrow rising passages and rare tall halls passed");
     }
 
     private static void checkMineshaftPlacement() {
