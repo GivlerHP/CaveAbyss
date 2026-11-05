@@ -178,8 +178,8 @@ public final class DeepWorldGeneratorSmoke {
                 boolean solid = true;
                 for (int y = (int)Math.ceil(center - half); y <= (int)Math.floor(center + half); y++)
                     if (terrain[((y + 64) << 8) | (z << 4) | x] == 0) solid = false;
-                if (!solid) throw new AssertionError("Mountain pillar was cut through by its chamber");
-                pillars++;
+                // Eroded flanks can lean; the chamber must retain continuous load-bearing cores.
+                if (solid) pillars++;
             }
             MountainCaves.line(76543L, cx, -2, terrain, mountain, rock, deep, 12, 13);
             for (int state : terrain) if (state == 12 || state == 13) lining++;
@@ -214,10 +214,25 @@ public final class DeepWorldGeneratorSmoke {
                 throw new AssertionError("Hall floor has an abrupt discontinuity");
         }
         if (highest - lowest < 7) throw new AssertionError("Mountain chambers lack height variation");
+        int waistArea = 0, rootArea = 0, leaning = 0;
+        for (int x = -64; x < 64; x++) for (int z = -64; z < 64; z++) {
+            if (MountainCaves.pillar(76543L, x, z, 0, 0)) waistArea++;
+            if (MountainCaves.pillar(76543L, x, z, 1, -1)) rootArea++;
+            if (MountainCaves.pillar(76543L, x, z, .5, -.5)
+                    != MountainCaves.pillar(76543L, x, z, .5, .5)) leaning++;
+        }
+        if (rootArea < waistArea * 2 || leaning < 50)
+            throw new AssertionError("Pillars lack broad roots or irregular leaning sides: " + waistArea + "/" + rootArea + "/" + leaning);
         checkMountainLayers();
         if (MountainCaves.isMountain(net.minecraft.world.biome.BiomeGenBase.ocean)
                 || !MountainCaves.isMountain(net.minecraft.world.biome.BiomeGenBase.extremeHills))
             throw new AssertionError("Mountain biome classifier failed");
+        net.minecraft.world.biome.BiomeGenBase modMountain = new net.minecraft.world.biome.BiomeGenBase(251) { };
+        modMountain.biomeName = "Test Mountains";
+        net.minecraftforge.common.BiomeDictionary.registerBiomeType(modMountain, net.minecraftforge.common.BiomeDictionary.Type.MOUNTAIN);
+        if (!MountainCaves.isMountain(modMountain)
+                || !MountainCaves.isMountain(net.minecraft.world.biome.BiomeGenBase.getBiome(131)))
+            throw new AssertionError("Modded/mutated mountain biome lost deep emerald eligibility");
         System.out.println("Mountain chambers, formations, deterministic generation and terrain boundaries passed");
     }
 

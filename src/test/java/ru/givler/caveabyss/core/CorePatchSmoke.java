@@ -59,6 +59,7 @@ public final class CorePatchSmoke {
         assertDirectChunkStorage();
         CompatibilityPatchSmoke.check();
         ru.givler.caveabyss.data.StorageSmoke.check();
+        ru.givler.caveabyss.config.DeepOreConfigSmoke.check();
         ru.givler.caveabyss.world.DeepWorldGeneratorSmoke.check();
         ru.givler.caveabyss.block.DripstoneSmoke.check();
         ru.givler.caveabyss.integration.mf2.Mf2IntegrationSmoke.check();

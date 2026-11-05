@@ -33,10 +33,11 @@ public final class MountainCaves {
             Profile profile = profile(seed, wx, wz);
             for (int y = -51; y <= -3; y++) {
                 int i = index(x, y, z);
-                double vertical = profile.vertical(y);
+                double signed = profile.signedVertical(y);
+                double vertical = Math.abs(signed);
                 boolean tunnel = profile.tunnel(y);
                 if (vertical > 1 && !tunnel) continue;
-                if (vertical <= 1 && pillar(seed, wx, wz, vertical)) {
+                if (vertical <= 1 && pillar(seed, wx, wz, vertical, signed)) {
                     // Repair earlier vanilla carving through a pillar's core.
                     // This runs only while generating an absent lower layer.
                     if (terrain[i] == 0) terrain[i] = deep;
@@ -92,10 +93,14 @@ public final class MountainCaves {
         final double[] centers = new double[4], halves = new double[4];
         double tunnelDistance = Double.POSITIVE_INFINITY, tunnelY;
 
-        double vertical(int y) {
+        double vertical(int y) { return Math.abs(signedVertical(y)); }
+
+        double signedVertical(int y) {
             double result = Double.POSITIVE_INFINITY;
-            for (int i = 0; i < halves.length; i++)
-                if (halves[i] >= 2) result = Math.min(result, Math.abs(y - centers[i]) / halves[i]);
+            for (int i = 0; i < halves.length; i++) if (halves[i] >= 2) {
+                double signed = (y - centers[i]) / halves[i];
+                if (Math.abs(signed) < Math.abs(result)) result = signed;
+            }
             return result;
         }
 
@@ -105,17 +110,37 @@ public final class MountainCaves {
         }
     }
 
-    /** Jittered world-space anchors: broad feet/caps, narrower solid waists. */
+    /** Stable narrow cores, asymmetric eroded flanks and broad rock roots/caps. */
     static boolean pillar(long seed, int x, int z, double vertical) {
+        return pillar(seed, x, z, vertical, 0);
+    }
+
+    static boolean pillar(long seed, int x, int z, double vertical, double signed) {
         int gx = Math.floorDiv(x, 20), gz = Math.floorDiv(z, 20);
         for (int dx = -1; dx <= 1; dx++) for (int dz = -1; dz <= 1; dz++) {
             long hash = mix(seed ^ 0xC011AL, gx + dx, 0, gz + dz);
+            if ((hash & 3) == 0) continue;
             double px = (gx + dx) * 20 + 4 + (hash & 15) * .75;
             double pz = (gz + dz) * 20 + 4 + ((hash >>> 4) & 15) * .75;
-            double waist = 1.5 + ((hash >>> 8) & 7) * .12;
-            double radius = waist + 1.6 * Math.pow(Math.min(1, vertical), 3);
             double sx = x + .5 - px, sz = z + .5 - pz;
-            if (sx * sx + sz * sz <= radius * radius) return true;
+            double distance = sx * sx + sz * sz;
+            if (distance > 81) continue;
+            // The load-bearing core stays connected through all heights.
+            if (distance <= .85 * .85) return true;
+            double angle = ((hash >>> 12) & 255) * (Math.PI * 2 / 256);
+            double sin = Math.sin(angle), cos = Math.cos(angle);
+            double bend = signed * .55 + Math.sin(signed * Math.PI) * .25;
+            sx -= cos * bend; sz -= sin * bend;
+            double stretch = 1 + ((hash >>> 20) & 7) * .05;
+            double u = (sx * cos + sz * sin) / stretch;
+            double v = (-sx * sin + sz * cos) * stretch;
+            double theta = Math.atan2(v, u);
+            double waist = 1.3 + ((hash >>> 8) & 7) * .18;
+            double lobes = 1 + .14 * Math.sin(theta * 3 + angle) + .07 * Math.sin(theta * 5 - angle);
+            double rough = .16 * (DeepWorldGenerator.noise(seed ^ 0xC011BL, x / 2.8, signed, z / 2.8) - .5);
+            double root = 2.4 * Math.pow(Math.min(1, vertical), 3) * (signed < 0 ? 1.2 : 1);
+            double radius = waist * (lobes + rough) + root;
+            if (u * u + v * v <= radius * radius) return true;
         }
         return false;
     }

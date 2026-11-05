@@ -81,8 +81,7 @@ public final class DeepWorldGenerator {
         configuredVein(random, terrain, stone, deepslate, Blocks.lapis_ore, CaveBlocks.lapisOre, DeepOreConfig.VANILLA[4]);
         configuredVein(random, terrain, stone, deepslate, Blocks.diamond_ore, CaveBlocks.diamondOre, DeepOreConfig.VANILLA[5]);
         net.minecraft.world.biome.BiomeGenBase biome = world.getBiomeGenForCoords(baseX + 8, baseZ + 8);
-        if (biome == net.minecraft.world.biome.BiomeGenBase.extremeHills
-                || biome == net.minecraft.world.biome.BiomeGenBase.extremeHillsEdge)
+        if (MountainCaves.isMountain(biome))
             configuredVein(random, terrain, stone, deepslate, Blocks.emerald_ore, CaveBlocks.emeraldOre, DeepOreConfig.VANILLA[6]);
         ThaumcraftIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);
         BopIntegration.generate(world, random, terrain, deepslate, chunkX, chunkZ);

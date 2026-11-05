@@ -44,7 +44,20 @@ public final class DeepOreConfig {
         MF2[4] = rule("mf2.nitre", 2, 4, 8, -40, -8, 1.0);
         MF2[5] = rule("mf2.sulfur", 3, 6, 4, -60, -32, 1.0);
         MF2[6] = rule("mf2.mythic", 1, 2, 6, -63, -58, 0.05);
-        MF2[7] = rule("mf2.deralium", 1, 2, -62, -33, 0.08);
+        MF2[7] = rule("mf2.deralium", 1, 5, -62, -33, 0.25);
+        Property distributionVersion = config.get("generation", "deraliumDistributionVersion", 0,
+                "Migration version for the default deep deralium distribution.");
+        Rule deralium = MF2[7];
+        if (distributionVersion.getInt(0) < 1) {
+            // Upgrade the exact old preset once; leave custom distributions intact.
+            if (deralium.count == 1 && deralium.maxCount == 1 && deralium.size == 2
+                    && deralium.minY == -62 && deralium.maxY == -33 && deralium.chance == 0.08) {
+                deralium.size = 5; deralium.chance = 0.25;
+                config.get("mf2.deralium", "veinSize", 5).set(5);
+                config.get("mf2.deralium", "chunkChance", 0.25).set(0.25);
+            }
+            distributionVersion.set(1);
+        }
         config.save();
     }
 
