@@ -7,6 +7,8 @@ import net.minecraft.network.play.server.S23PacketBlockChange;
 import net.minecraft.world.World;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import cpw.mods.fml.relauncher.ReflectionHelper;
+import java.lang.reflect.Field;
 
 /** Temporary diagnostics for block interactions across the Y=0 boundary. */
 public final class NegativeBlockTrace {
@@ -27,10 +29,24 @@ public final class NegativeBlockTrace {
     }
 
     public static void correction(S23PacketBlockChange packet, boolean read) {
-        int x = packet.func_148879_d(), y = packet.func_148878_e(), z = packet.func_148877_f();
-        if (y >= 0 && y < 192) return;
-        LOG.info("{} BLOCK_CHANGE x={} y={} z={} block={} meta={}", read ? "RECV" : "SEND",
-                x, y, z, Block.getIdFromBlock(packet.func_148880_c()), packet.func_148881_g());
+        // S23 getters are client-only and are stripped from dedicated servers.
+        try {
+            int y = CorrectionFields.Y.getInt(packet);
+            if (y >= 0 && y < 192) return;
+            LOG.info("{} BLOCK_CHANGE x={} y={} z={} block={} meta={}", read ? "RECV" : "SEND",
+                    CorrectionFields.X.getInt(packet), y, CorrectionFields.Z.getInt(packet),
+                    Block.getIdFromBlock((Block) CorrectionFields.BLOCK.get(packet)), CorrectionFields.META.getInt(packet));
+        } catch (IllegalAccessException exception) {
+            throw new IllegalStateException("Cannot read block correction coordinates", exception);
+        }
+    }
+
+    private static final class CorrectionFields {
+        static final Field X = ReflectionHelper.findField(S23PacketBlockChange.class, "field_148887_a");
+        static final Field Y = ReflectionHelper.findField(S23PacketBlockChange.class, "field_148885_b");
+        static final Field Z = ReflectionHelper.findField(S23PacketBlockChange.class, "field_148886_c");
+        static final Field BLOCK = ReflectionHelper.findField(S23PacketBlockChange.class, "field_148883_d");
+        static final Field META = ReflectionHelper.findField(S23PacketBlockChange.class, "field_148884_e");
     }
 
     public static void serverDig(NetHandlerPlayServer handler, C07PacketPlayerDigging packet, boolean after) {

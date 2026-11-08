@@ -21,7 +21,12 @@ public final class PistonHeightTransformer implements IClassTransformer, Opcodes
         new ClassReader(bytes).accept(node, 0);
         int count = 0;
         for (MethodNode method : node.methods) {
-            if (!FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc).equals("(Lnet/minecraft/world/World;IIII)Z")) continue;
+            String descriptor = FMLDeobfuscatingRemapper.INSTANCE.mapMethodDesc(method.desc);
+            boolean vanilla = descriptor.equals("(Lnet/minecraft/world/World;IIII)Z");
+            // CraftBukkit moves the extension scan into an int-returning helper.
+            boolean craftBukkit = method.name.equals("canExtend_IntCB")
+                    && descriptor.equals("(Lnet/minecraft/world/World;IIII)I");
+            if (!vanilla && !craftBukkit) continue;
             for (AbstractInsnNode insn = method.instructions.getFirst(); insn != null; insn = insn.getNext()) {
                 if (!(insn instanceof JumpInsnNode) || insn.getOpcode() != IFLE) continue;
                 AbstractInsnNode previous = insn.getPrevious();

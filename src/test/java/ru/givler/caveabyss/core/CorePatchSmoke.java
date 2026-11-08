@@ -31,6 +31,7 @@ public final class CorePatchSmoke {
         check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.client.C07PacketPlayerDigging");
         check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.client.C08PacketPlayerBlockPlacement");
         check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.server.S23PacketBlockChange");
+        PacketSideSmoke.check();
         check(new NegativeDigTraceTransformer(), "net.minecraft.network.NetHandlerPlayServer");
         check(new NegativeMiningClientTransformer(), "net.minecraft.client.multiplayer.PlayerControllerMP");
         check(new NegativeItemTransformer(), "net.minecraft.client.network.NetHandlerPlayClient");

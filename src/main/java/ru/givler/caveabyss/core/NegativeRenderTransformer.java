@@ -226,7 +226,9 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                 patched++;
             }
         }
-        if (patched != 5) throw new IllegalStateException("CaveAbyss expected 5 ChunkCache patches; found " + patched);
+        // Dedicated servers have no client-only sky-brightness methods.
+        int expected = cpw.mods.fml.relauncher.FMLLaunchHandler.side() == cpw.mods.fml.relauncher.Side.SERVER ? 3 : 5;
+        if (patched != expected) throw new IllegalStateException("CaveAbyss expected " + expected + " ChunkCache patches; found " + patched);
     }
 
     /** Empty translucent passes are possible when a mod reports a rendered block without adding quads. */
