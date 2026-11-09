@@ -12,6 +12,11 @@ import ru.givler.caveabyss.network.MinusOneNetwork;
 public final class MinusOneHooks {
     private MinusOneHooks() { }
 
+    /** Preserve Angelica's single dummy section; extend the actual vanilla renderer to -64..255. */
+    public static int legacyRenderSections(int original) {
+        return original <= 1 ? original : 20;
+    }
+
     public static int minimumY(World world) {
         return world.provider.dimensionId == 0 ? MinusOneLayer.MIN_Y : 0;
     }

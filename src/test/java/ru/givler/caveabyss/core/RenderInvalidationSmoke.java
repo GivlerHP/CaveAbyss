@@ -23,6 +23,23 @@ public final class RenderInvalidationSmoke {
             original = out.toByteArray();
         }
         byte[] patched = new NegativeRenderTransformer().transform(originalName, originalName, original);
+        ClassNode heightNode = new ClassNode();
+        new ClassReader(patched).accept(heightNode, 0);
+        boolean heightAnchor = false;
+        for (MethodNode method : heightNode.methods) if (method.name.equals("loadRenderers")) {
+            for (AbstractInsnNode instruction : method.instructions.toArray()) {
+                boolean sixteen = instruction instanceof IntInsnNode && ((IntInsnNode) instruction).operand == 16;
+                if (!sixteen) continue;
+                AbstractInsnNode next = instruction.getNext();
+                while (next != null && next.getOpcode() < 0) next = next.getNext();
+                if (!(next instanceof MethodInsnNode) || !((MethodInsnNode) next).name.equals("legacyRenderSections"))
+                    throw new AssertionError("Angelica's first-16 constant would target a coordinate scale instead of section height");
+                heightAnchor = true;
+                break;
+            }
+        }
+        if (!heightAnchor) throw new AssertionError("Original section-height constant must survive for Angelica");
+        System.out.println("PASS Angelica constant ordering: first 16 remains section height; 1 dummy / 20 vanilla sections");
         String generated = "ru/givler/caveabyss/core/GeneratedGlobalInvalidation";
         ClassWriter remapped = new ClassWriter(0);
         new ClassReader(patched).accept(new RemappingClassAdapter(remapped, new Remapper() {

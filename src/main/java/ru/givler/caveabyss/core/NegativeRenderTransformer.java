@@ -68,7 +68,11 @@ public final class NegativeRenderTransformer implements IClassTransformer, Opcod
                     String mappedField = FMLDeobfuscatingRemapper.INSTANCE.mapFieldName(node.name, field.name, field.desc);
                     if (mappedField.equals("renderChunksTall") || mappedField.equals("field_72763_n")) {
                         if (intValue(insn.getPrevious()) != 16) throw new IllegalStateException("CaveAbyss render height pattern changed");
-                        method.instructions.set(insn.getPrevious(), new IntInsnNode(BIPUSH, 20));
+                        // Keep the original 16 visible to Angelica's later @ModifyConstant(16 -> 1).
+                        // Replacing it with 20 makes that mixin change a coordinate scale instead,
+                        // leaving 20 WorldRenderers writing over display-list IDs reserved for models.
+                        method.instructions.insertBefore(insn, new MethodInsnNode(INVOKESTATIC, HOOK,
+                                "legacyRenderSections", "(I)I", false));
                         patched++;
                     } else if (mappedField.equals("minBlockY") || mappedField.equals("field_72779_z")) {
                         if (intValue(insn.getPrevious()) != 0) throw new IllegalStateException("CaveAbyss minimum render Y pattern changed");

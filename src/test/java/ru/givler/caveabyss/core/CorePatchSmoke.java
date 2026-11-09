@@ -26,6 +26,8 @@ public final class CorePatchSmoke {
         ObfuscatedOwnerSmoke.check();
         DeferredChunkUpdatesSmoke.check();
         RenderInvalidationSmoke.check();
+        if (MinusOneHooks.legacyRenderSections(16) != 20 || MinusOneHooks.legacyRenderSections(1) != 1)
+            throw new AssertionError("Vanilla negative height / Angelica dummy section compatibility");
         check(new WorldMinusOneTransformer(), "net.minecraft.world.World");
         check(new WorldMinusOneTransformer(), "net.minecraft.world.WorldManager");
         check(new NegativeBlockPacketTransformer(), "net.minecraft.network.play.client.C07PacketPlayerDigging");
