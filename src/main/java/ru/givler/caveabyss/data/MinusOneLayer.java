@@ -182,8 +182,25 @@ public final class MinusOneLayer {
         }
     }
 
+    /** Finalize only after Forge has put the chunk into its loaded-chunk map. */
+    public static void deferMigrationRelight(Chunk chunk) {
+        layer(chunk).migrationRelightPending = true;
+    }
+
     @SubscribeEvent
     public void onChunkLoad(ChunkEvent.Load event) {
+        Chunk chunk = event.getChunk();
+        Layer data = LAYERS.get(chunk);
+        if (!chunk.worldObj.isRemote && data != null && data.migrationRelightPending) {
+            data.migrationRelightPending = false;
+            try {
+                chunk.generateSkylightMap();
+                chunk.setChunkModified();
+            } catch (RuntimeException | Error failure) {
+                data.migrationRelightPending = true;
+                throw failure;
+            }
+        }
         activateGeneratedLiquids(event.getChunk());
         reactLoadedLava(event.getChunk());
     }
@@ -456,6 +473,7 @@ public final class MinusOneLayer {
     }
 
     private static final class Layer {
+        private boolean migrationRelightPending;
         private volatile int receivedSections;
         private final byte[] nonEmptySections = new byte[4];
         private byte[] ids;

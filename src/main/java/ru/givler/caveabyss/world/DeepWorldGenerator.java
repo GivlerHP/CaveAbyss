@@ -137,8 +137,9 @@ public final class DeepWorldGenerator {
                     }
                 }
         }
-        chunk.generateSkylightMap();
-        MinusOneLayer.activateGeneratedLiquids(chunk);
+        // ChunkDataEvent.Load runs before ChunkProviderServer registers this chunk.
+        // Modded opacity queries may call World.getBlockMetadata and load it recursively.
+        MinusOneLayer.deferMigrationRelight(chunk);
         chunk.setChunkModified();
     }
 
