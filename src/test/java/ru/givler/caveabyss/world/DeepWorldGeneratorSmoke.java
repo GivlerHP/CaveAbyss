@@ -57,7 +57,7 @@ public final class DeepWorldGeneratorSmoke {
         if (magma == 0 || magma > 262144 / 100 || adjacentMagma < magma / 3)
             throw new AssertionError("Magma must form rare connected patches: " + magma + "/" + adjacentMagma);
         checkOceanChambers();
-        checkCaveConnection();
+        checkCaveConnectionsWithBlocks();
         checkMigrationTransition();
         checkMountainCaves();
         checkMineshaftPlacement();
@@ -97,6 +97,24 @@ public final class DeepWorldGeneratorSmoke {
         System.out.println("Flooded broad chambers and optional dry narrow tunnels passed");
     }
 
+    private static void checkCaveConnectionsWithBlocks() {
+        try {
+            java.lang.reflect.Field access=sun.misc.Unsafe.class.getDeclaredField("theUnsafe");access.setAccessible(true);
+            sun.misc.Unsafe unsafe=(sun.misc.Unsafe)access.get(null);
+            String[] names={"stone","air","water","flowing_water","lava","flowing_lava"};Object[] saved=new Object[names.length];
+            try {
+                for(int n=0;n<names.length;n++) {
+                    java.lang.reflect.Field f=Blocks.class.getDeclaredField(names[n]);saved[n]=unsafe.getObject(unsafe.staticFieldBase(f),unsafe.staticFieldOffset(f));
+                    Material m=n==0?Material.rock:n==1?Material.air:n<=3?Material.water:Material.lava;
+                    unsafe.putObject(unsafe.staticFieldBase(f),unsafe.staticFieldOffset(f),new Block(m){});
+                }
+                checkCaveConnection();checkHighCaveConnection();
+            } finally {
+                for(int n=0;n<names.length;n++){java.lang.reflect.Field f=Blocks.class.getDeclaredField(names[n]);unsafe.putObject(unsafe.staticFieldBase(f),unsafe.staticFieldOffset(f),saved[n]);}
+            }
+        }catch(ReflectiveOperationException failure){throw new AssertionError(failure);}
+    }
+
     private static void checkCaveConnection() {
         Block[] upper = new Block[65536];
         int[] lower = new int[16384];
@@ -116,6 +134,33 @@ public final class DeepWorldGeneratorSmoke {
             throw new AssertionError("Cave transition did not cross Y=0");
         if (lower[((-5 + 64) << 8) | (8 << 4) | 8] != 7)
             throw new AssertionError("Cave transition exposed bedrock");
+    }
+
+    private static void checkHighCaveConnection() {
+        Block[] upper=new Block[65536];int[] lower=new int[16384];
+        Arrays.fill(upper,Blocks.stone);Arrays.fill(lower,1);
+        int lx=3,lz=3,ly=-30,ux=12,uz=12,uy=32;
+        lower[((ly+64)<<8)|(lz<<4)|lx]=0;
+        upper[((ux*16+uz)<<8)|uy]=Blocks.air;
+        DeepWorldGenerator.connectToVanillaCave(upper,lower,1,2,98765L,0,0);
+        boolean[] visited=new boolean[16*16*113];java.util.ArrayDeque<int[]> queue=new java.util.ArrayDeque<int[]>();
+        queue.add(new int[]{lx,ly,lz});boolean reached=false;
+        while(!queue.isEmpty()) {
+            int[] at=queue.remove();int x=at[0],y=at[1],z=at[2];
+            if(x<0||x>15||z<0||z>15||y< -64||y>48)continue;
+            int key=((y+64)<<8)|(z<<4)|x;if(visited[key])continue;visited[key]=true;
+            boolean air=y<0?lower[key]==0:upper[((x*16+z)<<8)|y]==Blocks.air;
+            if(!air)continue;
+            if(x==ux&&y==uy&&z==uz){reached=true;break;}
+            queue.add(new int[]{x+1,y,z});queue.add(new int[]{x-1,y,z});queue.add(new int[]{x,y+1,z});queue.add(new int[]{x,y-1,z});queue.add(new int[]{x,y,z+1});queue.add(new int[]{x,y,z-1});
+        }
+        if(!reached)throw new AssertionError("High RTG-style cave did not connect to lower network");
+        // A wet endpoint must not be opened into a dry deep cave.
+        Arrays.fill(upper,Blocks.stone);Arrays.fill(lower,1);lower[((ly+64)<<8)|(lz<<4)|lx]=0;
+        upper[((ux*16+uz)<<8)|uy]=Blocks.air;upper[((ux*16+uz)<<8)|(uy-1)]=Blocks.lava;
+        int[] before=lower.clone();DeepWorldGenerator.connectToVanillaCave(upper,lower,1,2,98765L,0,0);
+        if(!Arrays.equals(before,lower))throw new AssertionError("Connector opened a lava-filled cave");
+        System.out.println("PASS cave connection: flood-fill from Y=-30 to Y=32 across nine blocks horizontally; lava rejected");
     }
 
     private static void checkMigrationTransition() {

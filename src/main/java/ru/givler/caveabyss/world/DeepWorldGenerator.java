@@ -29,11 +29,11 @@ public final class DeepWorldGenerator {
     private DeepWorldGenerator() { }
 
     public static int[] prepareTerrain(World world, Block[] blocks, int chunkX, int chunkZ) {
-        return prepareTerrain(world, blocks, chunkX, chunkZ, true);
+        return prepareTerrain(world, blocks, chunkX, chunkZ, true, 48);
     }
 
     private static int[] prepareTerrain(World world, Block[] blocks, int chunkX, int chunkZ,
-                                        boolean connectCaves) {
+                                        boolean connectCaves, int connectionCeiling) {
         if (world.provider.dimensionId != 0 || world.isRemote) return null;
         for (int i = 0; i < blocks.length; i++)
             if ((i & 255) <= 4 && blocks[i] == Blocks.bedrock) blocks[i] = Blocks.stone;
@@ -66,7 +66,7 @@ public final class DeepWorldGenerator {
         carveVanillaCaves(world, blocks, terrain, chunkX, chunkZ);
         MountainCaves.carve(world, chunkX, chunkZ, terrain);
         if (connectCaves && !ocean)
-            connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ);
+            connectToVanillaCave(blocks, terrain, stone, deepslate, seed, chunkX, chunkZ, connectionCeiling);
         if (!ocean) fillDeepLiquids(terrain, random);
         OceanCaves.generate(world, seed, chunkX, chunkZ, terrain,
                 connectCaves ? blocks : null);
@@ -119,7 +119,7 @@ public final class DeepWorldGenerator {
             }
         }
         int[] terrain = prepareTerrain(world, upper, chunk.xPosition, chunk.zPosition,
-                strength >= MigrationConfig.SAFE);
+                strength >= MigrationConfig.SAFE, 14);
         if (terrain == null) return;
         MinusOneLayer.fillGeneratedChunk(chunk, terrain);
         ExtendedBlockStorage bottom = chunk.getBlockStorageArray()[0];
@@ -220,32 +220,43 @@ public final class DeepWorldGenerator {
 
     static void connectToVanillaCave(Block[] upper, int[] lower, int stone, int deepslate,
                                      long seed, int chunkX, int chunkZ) {
+        connectToVanillaCave(upper, lower, stone, deepslate, seed, chunkX, chunkZ, 48);
+    }
+
+    private static void connectToVanillaCave(Block[] upper, int[] lower, int stone, int deepslate,
+                                             long seed, int chunkX, int chunkZ, int ceiling) {
+        // Inspect each upper opening once: liquid-neighbour checks are deliberately
+        // outside the lower/upper pairing loop as the search now spans the whole chunk.
+        java.util.List<int[]> openings = new java.util.ArrayList<int[]>();
+        for (int x = 2; x < 14; x++) for (int z = 2; z < 14; z++) {
+            int column = (x * 16 + z) << 8;
+            for (int y = 1; y <= ceiling - 2; y++) {
+                Block cave = upper[column | y];
+                if ((cave == null || cave == Blocks.air) && upper[column | (y + 1)] == Blocks.stone
+                        && !nearUpperLiquid(upper, x, y, z, 3))
+                    openings.add(new int[]{x, y, z});
+            }
+        }
+        if (openings.isEmpty()) return;
         int best = Integer.MAX_VALUE;
         int lowerX = 0, lowerY = 0, lowerZ = 0, upperX = 0, upperY = 0, upperZ = 0;
         for (int x = 2; x < 14; x++) for (int z = 2; z < 14; z++) {
             int y = 0;
-            for (int candidate = -1; candidate >= -16; candidate--)
+            for (int candidate = -1; candidate >= -40; candidate--)
                 if (lower[((candidate + 64) << 8) | (z << 4) | x] == 0) {
                     y = candidate;
                     break;
                 }
             if (y == 0) continue;
-            for (int tx = Math.max(2, x - 5); tx <= Math.min(13, x + 5); tx++)
-                for (int tz = Math.max(2, z - 5); tz <= Math.min(13, z + 5); tz++) {
-                    int column = (tx * 16 + tz) << 8;
-                    for (int ty = 1; ty <= 12; ty++) {
-                        Block cave = upper[column | ty];
-                        if ((cave != null && cave != Blocks.air) || upper[column | (ty + 1)] != Blocks.stone
-                                || nearUpperLiquid(upper, tx, ty, tz, 3))
-                            continue;
-                        int score = (tx - x) * (tx - x) + (tz - z) * (tz - z) + (ty - y) * (ty - y);
-                        if (score < best) {
-                            best = score;
-                            lowerX = x; lowerY = y; lowerZ = z;
-                            upperX = tx; upperY = ty; upperZ = tz;
-                        }
-                    }
+            for (int[] opening : openings) {
+                int tx = opening[0], ty = opening[1], tz = opening[2];
+                int score = (tx - x) * (tx - x) + (tz - z) * (tz - z) + (ty - y) * (ty - y);
+                if (score < best) {
+                    best = score;
+                    lowerX = x; lowerY = y; lowerZ = z;
+                    upperX = tx; upperY = ty; upperZ = tz;
                 }
+            }
         }
         if (best == Integer.MAX_VALUE) return;
         Random shape = new Random(seed ^ ((long) chunkX * 341873128712L)
@@ -264,7 +275,7 @@ public final class DeepWorldGenerator {
             double radius = 1.45 + 0.35 * Math.sin(t * Math.PI * 3.0 + phase);
             for (int x = Math.max(1, (int) Math.floor(cx - radius)); x <= Math.min(14, (int) Math.ceil(cx + radius)); x++)
                 for (int z = Math.max(1, (int) Math.floor(cz - radius)); z <= Math.min(14, (int) Math.ceil(cz + radius)); z++)
-                    for (int y = Math.max(-54, (int) Math.floor(cy - radius)); y <= Math.min(14, (int) Math.ceil(cy + radius)); y++) {
+                    for (int y = Math.max(-54, (int) Math.floor(cy - radius)); y <= Math.min(ceiling, (int) Math.ceil(cy + radius)); y++) {
                         double dx = x + 0.5 - cx, dy = y + 0.5 - cy, dz = z + 0.5 - cz;
                         if (dx * dx + dy * dy + dz * dz > radius * radius) continue;
                         if (y < 0) {
