@@ -18,7 +18,7 @@ import ru.givler.caveabyss.config.DeepOreConfig;
 import ru.givler.caveabyss.integration.mbo.MboIntegration;
 
 @Mod(modid= CaveAbyss.ID, name= CaveAbyss.NAME, version= CaveAbyss.VERSION,
-        dependencies="after:minefantasy2;after:mbo")
+        dependencies="after:minefantasy2;after:mbo;after:Thaumcraft")
 public class CaveAbyss {
 	public static final String ID = "caveabyss";
 	public static final String NAME = "CaveAbyss";

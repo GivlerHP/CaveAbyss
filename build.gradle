@@ -131,3 +131,8 @@ task verifyDevDependencies {
     }
 }
 tasks.check.dependsOn verifyDevDependencies
+
+task verifyThaumcraftAspects(type: JavaExec, dependsOn: testClasses) {
+    classpath = sourceSets.test.runtimeClasspath
+    main = 'ru.givler.caveabyss.integration.thaumcraft.ThaumcraftAspectsSmoke'
+}

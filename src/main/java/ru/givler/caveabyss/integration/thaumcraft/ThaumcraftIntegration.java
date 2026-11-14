@@ -44,6 +44,14 @@ public final class ThaumcraftIntegration {
 
     public static void postInit() {
         if (deepOre == null) return;
+        if (cpw.mods.fml.common.Loader.isModLoaded("Thaumcraft")) {
+            try {
+                Class.forName("ru.givler.caveabyss.integration.thaumcraft.ThaumcraftAspects")
+                        .getMethod("register").invoke(null);
+            } catch (ReflectiveOperationException error) {
+                throw new IllegalStateException("Could not register CaveAbyss aspects", error);
+            }
+        }
         sourceOre = GameRegistry.findBlock("Thaumcraft", "blockCustomOre");
         if (sourceOre == null) {
             LOG.warn("Thaumcraft ore block was not found; deep Thaumcraft ore generation is disabled");
